@@ -1,14 +1,15 @@
 .onAttach <- function(libname, pkgname) {
   packageStartupMessage(
     "\n",
-    crayon::green("autotesteR "), "carregado com sucesso!\n",
+    crayon::green("autotestR "), "loaded successfully!\n",
     "----------------------------------------------------------\n",
-    "Um pacote desenvolvido para facilitar analises estatisticas\n",
-    "com uma linguagem acessivel, diagnosticos automaticos e graficos claros.\n",
+    "A package designed to simplify statistical analyses\n",
+    "with accessible language, automatic diagnostics, and clear graphics.\n",
     "\n",
-    "Digite ", crayon::green("?autotesteR"), " para ver uma introducao geral\n",
-    "Digite o nome da formula sem parametros (", crayon::bold("ex. teste.t()"), ") para ver uma breve descricao do teste\n",
-    "Site oficial e atualizacoes: https://github.com/Luiz-Garcia-R/autotesteR.git\n",
+    "Type ", crayon::green("?autotestR"), " to see a general introduction\n",
+    "Type a test function name without parameters (", crayon::bold("e.g. test.t()"),
+    ") to see a brief description of the test\n",
+    "Official website and updates: https://github.com/Luiz-Garcia-R/autotestR.git\n",
     "----------------------------------------------------------\n"
   )
 }

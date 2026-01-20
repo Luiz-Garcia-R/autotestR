@@ -1,5 +1,5 @@
 # -------------------------------
-# pacotes usados diretamente
+# utilized packages
 # -------------------------------
 
 # stats

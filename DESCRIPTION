@@ -1,6 +1,6 @@
-Package: autotesteR
+Package: autotestR
 Title: Automated Functions for Basic Statistical Tests
-Version: 0.1.10
+Version: 1.1.10
 Authors@R: 
     person("Luiz", "Garcia", 
            email = "luiz.cardoso@ufpr.br", 

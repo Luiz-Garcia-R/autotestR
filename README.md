@@ -4,72 +4,72 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-**autotestR** é um pacote R voltado para simplificar a realização dos principais testes estatísticos usados na área de biociências, com funções amigáveis que geram gráficos automáticos e explicações claras, facilitando a vida de pesquisadores e estudantes brasileiros.
+**autotestR** is an R package designed to simplify the execution of the main statistical tests commonly used in the life sciences. It provides user-friendly functions that automatically generate plots and clear explanations, making statistical analysis more accessible for researchers and students.
 
-## Instalação
+## Installation
 
-Você pode instalar a versão de desenvolvimento do autotestR diretamente do GitHub com:
+You can install the development version of autotestR directly from GitHub:
 
 ```r
-# Instale o pacote devtools se ainda não tiver
+# Install devtools if you don't have it yet
 install.packages("devtools")
 
-# Instale autotestR do GitHub
+# Install autotestR from GitHub
 devtools::install_github("https://github.com/Luiz-Garcia-R/autotestR.git")
 ```
 
-# Funcionalidades principais
+# Main features
 
-- Teste t (independente e pareado)
-- Teste de Mann-Whitney (U de Wilcoxon)
-- Teste t múltiplo (Teste t ou Mann-Whitney)
-- Teste qui-quadrado e teste exato de Fisher
-- ANOVA com pós-teste de Tukey HSD
-- Kruskal Wallis com pós-teste de Dunn
-- Teste de correlação de Pearson, Spearman e Kendall com gráfico automático
-- Função diagnóstica que sugere o teste estatístico mais adequado
-- Gráficos intuitivos já integrados nas funções
+- t test (independent and paired)
+- Mann–Whitney test (Wilcoxon rank-sum)
+- Multiple group comparison (t test or Mann–Whitney)
+- Chi-squared test and Fisher’s exact test
+- One-way ANOVA with Tukey HSD post hoc test
+- Kruskal–Wallis test with Dunn post hoc test
+- Pearson, Spearman, and Kendall correlation tests with automatic plots
+- Diagnostic function that suggests the most appropriate statistical test
+- Intuitive plots fully integrated into the functions
 
 
-### Uso básico
+### Basic usage
 
 ```r
 library(autotestR)
 
-# Teste t independente
-grupo1 <- rnorm(30, 10, 2)
-grupo2 <- rnorm(30, 12, 2)
-teste.t(grupo1, grupo2)
+# Independent t test
+group1 <- rnorm(30, 10, 2)
+group2 <- rnorm(30, 12, 2)
+test.t(group1, group2)
 
-# Teste qui-quadrado
+# Chi-squared test
 var1 <- sample(c("A", "B"), 100, replace = TRUE)
-var2 <- sample(c("Sim", "Não"), 100, replace = TRUE)
-teste.qui(var1, var2)
+var2 <- sample(c("Yes", "No"), 100, replace = TRUE)
+test.chi(var1, var2)
 
-# Teste múltiplo (Teste t ou Mann-Whitney)
+# Multiple test (t test or Mann–Whitney)
 df <- data.frame(
-controle   = rnorm(30, 10),
-tratamento = rnorm(30, 12),
-teste1     = rnorm(30, 11),
-teste2     = rnorm(30, 15)
+  control   = rnorm(30, 10),
+  treatment = rnorm(30, 12),
+  test1     = rnorm(30, 11),
+  test2     = rnorm(30, 15)
 )
-teste.tmulti(df)
+test.tmulti(df)
 
-# ANOVA com pós-teste
+# ANOVA with post hoc test
 g1 <- rnorm(20, 5)
 g2 <- rnorm(20, 7)
 g3 <- rnorm(20, 6)
-teste.anova(g1, g2, g3)
+test.anova(g1, g2, g3)
 
-# Teste de correlação
+# Correlation test
 x <- rnorm(30)
 y <- x + rnorm(30, 0, 1)
-teste.correlacao(x, y)
+test.correlation(x, y)
 ```
 
 
-# Contato
+# Contact
 
-Se tiver dúvidas, sugestões ou quiser contribuir, abra uma issue ou envie um pull request no repositório GitHub.
+If you have questions, suggestions, or would like to contribute, feel free to open an issue or submit a pull request on the GitHub repository.
 
-Obrigado por usar o autotestR!
+Thank you for using autotestR!
