@@ -5,29 +5,29 @@
 \title{Fisher's Exact Test}
 \usage{
 test.fisher(
-  x_var,
-  y_var = NULL,
+  x,
+  y = NULL,
   title = "Fisher's Exact Test",
-  x_label = NULL,
-  y_label = "Proportion",
-  style = 1,
+  xlab = NULL,
+  ylab = "Proportion",
+  style = c("stacked", "barplot", "mosaic", "pie"),
   show_table = TRUE,
   help = FALSE,
   verbose = TRUE
 )
 }
 \arguments{
-\item{x_var}{Categorical vector or data frame with two columns.}
+\item{x}{Categorical vector or data frame with two columns.}
 
-\item{y_var}{Categorical vector (required if x_var is a vector).}
+\item{y}{Categorical vector (required if x_var is a vector).}
 
 \item{title}{Plot title (string). Default: "Fisher's Exact Test"}
 
-\item{x_label}{Name of the x-axis in the plot (string). Default: NULL (uses variable name)}
+\item{xlab}{Name of the x-axis in the plot (string). Default: NULL (uses variable name)}
 
-\item{y_label}{Name of the y-axis in the plot (string). Default: "Proportion"}
+\item{ylab}{Name of the y-axis in the plot (string). Default: "Proportion"}
 
-\item{style}{Plot style. Controls the visualization type.}
+\item{style}{Plot style. Controls the visualization type}
 
 \item{show_table}{Logical. If TRUE, prints the contingency table to the console. Default: TRUE}
 

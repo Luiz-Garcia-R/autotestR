@@ -7,32 +7,70 @@
 test.kruskal(
   ...,
   title = "Kruskal-Wallis + Dunn",
-  x_label = "Group",
-  y_label = "Value",
-  style = 1,
+  xlab = "Group",
+  ylab = "Value",
+  style = c("boxplot", "violin", "monochrome", "halfeye"),
+  adjust = c("bonferroni", "holm", "BH"),
   help = FALSE,
   verbose = TRUE
 )
 }
 \arguments{
-\item{...}{Numeric vectors or a data frame with two or more columns (each representing a group)}
+\item{...}{Numeric vectors representing groups, or a data frame with
+two or more columns (each column is treated as a group).}
 
-\item{title}{Plot title (default = "Kruskal-Wallis + Dunn")}
+\item{title}{Character. Plot title.}
 
-\item{x_label}{X-axis label (default = "Group")}
+\item{xlab}{Character. X-axis label.}
 
-\item{y_label}{Y-axis label (default = "Value")}
+\item{ylab}{Character. Y-axis label.}
 
-\item{style}{Plot style.}
+\item{style}{Character. Plot style. One of:
+\code{"boxplot"}, \code{"violin"}, \code{"monochrome"}, or \code{"halfeye"}.}
 
-\item{help}{Logical. If TRUE, shows help message}
+\item{adjust}{Character. Method for p-value adjustment in Dunn's test.
+One of \code{"bonferroni"}, \code{"holm"}, or \code{"BH"}.}
 
-\item{verbose}{Logical. If TRUE, prints detailed messages (default = TRUE)}
+\item{help}{Logical. If \code{TRUE}, displays a short help message and exits.}
+
+\item{verbose}{Logical. If \code{TRUE}, prints formatted statistical results
+to the console.}
 }
 \value{
-Kruskal-Wallis test object (invisible)
+Invisibly returns a list with the following components:
+\describe{
+\item{type}{Test type.}
+\item{H}{Kruskal-Wallis H statistic.}
+\item{df}{Degrees of freedom.}
+\item{p}{Global test p-value.}
+\item{epsilon_sq}{Epsilon-squared effect size.}
+\item{epsilon_ci}{Bootstrap confidence interval for effect size.}
+\item{means_sd}{Group means and standard deviations.}
+\item{dunn}{Dunn post-hoc results.}
+\item{significant_pairs}{Significant pairwise comparisons.}
+\item{data}{Long-format data used in the analysis.}
+}
 }
 \description{
-Performs the Kruskal-Wallis test for comparing multiple independent groups,
-followed by Dunn's post-hoc test with Bonferroni correction.
+Performs the Kruskal-Wallis rank-sum test for comparing three or more
+independent groups, followed by Dunn's post-hoc test with multiple
+comparison adjustment.
+}
+\details{
+This function is a non-parametric alternative to one-way ANOVA and is
+recommended when normality or homoscedasticity assumptions are violated.
+}
+\examples{
+set.seed(123)
+
+n <- 25
+
+df <- data.frame(
+  control    = rexp(n, rate = 1),
+  treatment1 = rexp(n, rate = 0.6),
+  treatment2 = rgamma(n, shape = 2, scale = 1)
+)
+
+test.kruskal(df)
+
 }

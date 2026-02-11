@@ -1,55 +1,54 @@
-#' Teste de Mann-Whitney (U)
+#' Mann-Whitney U Test
 #'
-#' Realiza o teste de Mann-Whitney (Wilcoxon rank-sum) para comparacao de dois grupos independentes,
-#' com resumo estatistico e visualizacao grafica.
+#' Performs the Mann-Whitney (Wilcoxon rank-sum) test for comparing two independent groups,
+#' with statistical summary and graphical visualization.
 #'
-#' @param ... Dois vetores numericos ou um data.frame com duas colunas numericas.
-#' @param titulo Titulo do grafico. Default: "Teste de Mann-Whitney".
-#' @param x Nome do eixo x no grafico. Default: "Grupo".
-#' @param y Nome do eixo y no grafico. Default: "Valor".
-#' @param estilo Estetica do plot gerado pela funcao.
-#' @param ajuda Logico. Se TRUE, exibe explicacao detalhada da funcao. Default: FALSE.
-#' @param verbose Se TRUE, imprime mensagens detalhadas. Default: TRUE.
+#' @param ... Two numeric vectors or a data.frame with two numeric columns.
+#' @param title Plot title. Default: "Mann-Whitney Test".
+#' @param xlab Label for x-axis. Default: "Group".
+#' @param ylab Label for y-axis. Default: "Value".
+#' @param style Plot aesthetic style.
+#' @param help Logical. If TRUE, prints a detailed explanation. Default: FALSE.
+#' @param verbose Logical. If TRUE, prints detailed messages. Default: TRUE.
 #' @importFrom stats median
 #'
-#' @return Lista invisivel com:
+#' @return Invisible list with:
 #' \describe{
-#'   \item{summary}{Resumo estatistico por grupo}
-#'   \item{test}{Resultado do teste (objeto htest)}
-#'   \item{plot}{Objeto ggplot2 com a visualizacao}
+#'   \item{summary}{Group-wise statistical summary}
+#'   \item{test}{Test result (htest object)}
+#'   \item{plot}{ggplot2 visualization object}
 #' }
 #' @export
 #'
 #' @examples
 #' x <- c(1, 3, 5, 6)
 #' y <- c(7, 8, 9, 12)
-#' test.u(x, y)
-#'
-#' dados <- data.frame(grupoA = x, grupoB = y)
-#' test.u(dados)
+#' data <- data.frame(groupA = x, groupB = y)
+#' test.u(data)
 
 test.u <- function(...,
-                    titulo = "Teste de Mann-Whitney",
-                    x = "Grupo",
-                    y = "Valor",
-                    estilo = 1,
-                    ajuda = FALSE,
-                    verbose = TRUE) {
+                   title = "Mann-Whitney Test",
+                   xlab = "Group",
+                   ylab = "Value",
+                   style = c("boxplot", "violin", "monochrome", "halfeye"),
+                   help = FALSE,
+                   verbose = TRUE) {
 
   input_groups <- list(...)
+  style <- match.arg(style)
 
   # ============================
-  # Entrada via data.frame
+  # Input via data.frame
   # ============================
   if (length(input_groups) == 1 && is.data.frame(input_groups[[1]])) {
 
     df <- input_groups[[1]]
 
     if (ncol(df) != 2)
-      stop("O data.frame deve conter exatamente duas colunas numericas.")
+      stop("The data.frame must contain exactly two numeric columns.")
 
     if (!all(vapply(df, is.numeric, logical(1))))
-      stop("As duas colunas do data.frame devem ser numericas.")
+      stop("Both columns must be numeric.")
 
     group_names <- colnames(df)
     groups <- as.list(df)
@@ -57,10 +56,10 @@ test.u <- function(...,
   } else {
 
     if (length(input_groups) != 2)
-      stop("Forneca dois vetores numericos ou um data.frame com duas colunas.")
+      stop("Provide two numeric vectors or one data.frame with two columns.")
 
     if (!all(vapply(input_groups, is.numeric, logical(1))))
-      stop("Todos os grupos devem ser vetores numericos.")
+      stop("All groups must be numeric vectors.")
 
     call_names <- as.character(match.call(expand.dots = FALSE)$...)
     group_names <- sub("^.*\\$", "", call_names)
@@ -68,29 +67,27 @@ test.u <- function(...,
   }
 
   # ============================
-  # Mensagem de ajuda
+  # Help message
   # ============================
-  if (ajuda) {
+  if (help) {
 
     if (verbose) {
       message("
-Funcao test.u()
+Function: test.u()
 
-Descricao:
-  Realiza o teste de Mann-Whitney (Wilcoxon rank-sum) para comparar dois grupos independentes.
+Description:
+  Performs the Mann-Whitney (Wilcoxon rank-sum) test to compare two independent groups.
 
-Quando usar:
-  - Dados nao-normais ou ordinais
-  - Comparacao entre dois grupos independentes
-  - Alternativa nao-parametrica ao teste t
+When to use:
+  - Non-normal or ordinal data
+  - Comparison of two independent groups
+  - Non-parametric alternative to the t-test
 
-Exemplos:
+Examples:
   x <- c(1, 3, 5, 6)
   y <- c(7, 8, 9, 12)
-  test.u(x, y)
-
-  dados <- data.frame(grupoA = x, grupoB = y)
-  test.u(dados)
+  data <- data.frame(groupA = x, groupB = y)
+  test.u(data)
 ")
     }
 
@@ -98,7 +95,7 @@ Exemplos:
   }
 
   # ============================
-  # Verificacao de pacotes
+  # Package checking
   # ============================
   required_packages <- c("ggplot2", "dplyr", "scales")
 
@@ -106,15 +103,15 @@ Exemplos:
     if (!requireNamespace(pkg, quietly = TRUE)) {
       stop(
         paste0(
-          "O pacote ", pkg,
-          " nao esta instalado. Instale com install.packages('", pkg, "')"
+          "Package ", pkg,
+          " is not installed. Install it with install.packages('", pkg, "')"
         )
       )
     }
   }
 
   # ============================
-  # Dados em formato longo
+  # Long-format data
   # ============================
   values <- unlist(groups)
 
@@ -129,7 +126,7 @@ Exemplos:
   )
 
   # ============================
-  # Teste Mann-Whitney
+  # Mann-Whitney test
   # ============================
   test_result <- stats::wilcox.test(
     groups[[1]],
@@ -138,52 +135,83 @@ Exemplos:
   )
 
   p_value <- test_result$p.value
+  p_label <- .format_pval(p_value)
+
+  x_data <- groups[[1]]
+  y_data <- groups[[2]]
+
+  nx <- sum(!is.na(x_data))
+  ny <- sum(!is.na(y_data))
+
+  # ----------------------------
+  # Median difference
+  # ----------------------------
+  median_diff <- median(x_data, na.rm = TRUE) - median(y_data, na.rm = TRUE)
+
+  # ----------------------------
+  # Rank-biserial correlation
+  # ----------------------------
+  U <- test_result$statistic
+
+  r_rb <- as.numeric((2 * U) / (nx * ny) - 1)
+
+  # ----------------------------
+  # Bootstrap CI (median diff)
+  # ----------------------------
+
+  res_boot <- .boot_two_sample(
+    x_data,
+    y_data,
+    stat_fun = function(a, b)
+      median(a, na.rm = TRUE) - median(b, na.rm = TRUE)
+  )
+
+  ci_low  <- res_boot$ci_low
+  ci_high <- res_boot$ci_high
 
   # ============================
-  # Resumo estatistico
+  # Statistical summary
   # ============================
   summary_table <- data_long |>
     dplyr::group_by(group) |>
     dplyr::summarise(
       Median = round(stats::median(value, na.rm = TRUE), 2),
-      Mean = round(mean(value, na.rm = TRUE), 2),
-      SD = round(stats::sd(value, na.rm = TRUE), 2),
+      Mean   = round(mean(value, na.rm = TRUE), 2),
+      SD     = round(stats::sd(value, na.rm = TRUE), 2),
       .groups = "drop"
     )
 
   if (verbose) {
-    message("\nResumo estatistico por grupo:")
-    print(summary_table)
-  }
 
-  # ============================
-  # Rotulos de significancia
-  # ============================
-  p_label <- if (p_value < 0.001) {
-    "p < 0.001"
-  } else {
-    paste0("p = ", signif(p_value, 3))
-  }
+    .print_header("Mann-Whitney U Test")
 
-  signif_label <- if (p_value < 0.001) {
-    "***"
-  } else if (p_value < 0.01) {
-    "**"
-  } else if (p_value < 0.05) {
-    "*"
-  } else {
-    ""
-  }
+    .print_block("Summary", function() {
+      print(summary_table, row.names = FALSE)
+    })
 
-  y_position <- max(values, na.rm = TRUE) +
-    0.1 * diff(range(values, na.rm = TRUE))
+    .print_block("Statistics", function() {
+
+      cat("W statistic = ", round(test_result$statistic, 3),
+          " | p = ", p_label, "\n", sep = "")
+
+      cat("Rank-biserial correlation (r) = ",
+          round(r_rb, 3), "\n", sep = "")
+
+      cat("Median difference = ",
+          round(median_diff, 2),
+          " [",
+          round(ci_low, 2), ", ",
+          round(ci_high, 2),
+          "]\n", sep = "")
+    })
+  }
 
   colors_vivid <- scales::hue_pal()(length(unique(data_long$group)))
 
   # ============================
-  # ESTILO 1 — Boxplot + jitter
+  # STYLE 1 — Boxplot + jitter
   # ============================
-  if (estilo == 1) {
+  if (style == "boxplot") {
 
     g <- ggplot2::ggplot(
       data_long,
@@ -191,20 +219,12 @@ Exemplos:
     ) +
       ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA) +
       ggplot2::geom_jitter(width = 0.1, alpha = 0.4, color = "black") +
-      ggplot2::annotate(
-        "text",
-        x = mean(seq_along(group_names)),
-        y = y_position,
-        label = signif_label,
-        size = 6
-      ) +
-      ggplot2::scale_fill_brewer(palette = "Set1") +
+      ggplot2::scale_fill_manual(values = colors_vivid) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
-        title = titulo,
-        subtitle = paste0("Mann-Whitney: ", p_label),
+        title = title,
         x = "",
-        y = y
+        y = ylab
       ) +
       ggplot2::theme(
         legend.position = "none",
@@ -215,9 +235,9 @@ Exemplos:
   }
 
   # ============================
-  # ESTILO 2 — Violin clean
+  # STYLE 2 — Violin
   # ============================
-  if (estilo == 2) {
+  if (style == "violin") {
 
     g <- ggplot2::ggplot(
       data_long,
@@ -241,20 +261,12 @@ Exemplos:
         size = 1.8,
         color = "gray25"
       ) +
-      ggplot2::annotate(
-        "text",
-        x = mean(seq_along(group_names)),
-        y = y_position,
-        label = signif_label,
-        size = 7
-      ) +
       ggplot2::scale_fill_manual(values = colors_vivid) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
-        title = titulo,
-        subtitle = paste0("Mann-Whitney: ", p_label),
+        title = title,
         x = "",
-        y = y
+        y = ylab
       ) +
       ggplot2::theme(
         legend.position = "none",
@@ -265,34 +277,31 @@ Exemplos:
   }
 
   # ============================
-  # ESTILO 3 — Monocromatico
+  # STYLE 3 — Monochrome
   # ============================
-  if (estilo == 3) {
+  if (style == "monochrome") {
 
     g <- ggplot2::ggplot(
       data_long,
       ggplot2::aes(x = group, y = value)
     ) +
-      ggplot2::geom_violin(fill = "gray85", color = NA) +
+      ggplot2::geom_violin(
+        trim = FALSE,
+        adjust = 0.6,
+        fill = "gray85",
+        color = NA
+      ) +
       ggplot2::geom_boxplot(width = 0.18, fill = "white") +
       ggplot2::geom_point(
         position = ggplot2::position_jitter(width = 0.1),
         color = "gray20",
         alpha = 0.4
       ) +
-      ggplot2::annotate(
-        "text",
-        x = mean(seq_along(group_names)),
-        y = y_position,
-        label = signif_label,
-        size = 7
-      ) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
-        title = titulo,
-        subtitle = paste0("Mann-Whitney: ", p_label),
+        title = title,
         x = "",
-        y = y
+        y = ylab
       ) +
       ggplot2::theme(
         legend.position = "none",
@@ -303,12 +312,12 @@ Exemplos:
   }
 
   # ============================
-  # ESTILO 4 — ggdist half-eye
+  # STYLE 4 — ggdist half-eye
   # ============================
-  if (estilo == 4) {
+  if (style == "halfeye") {
 
     if (!requireNamespace("ggdist", quietly = TRUE)) {
-      stop("O pacote ggdist é necessario para o estilo 4.")
+      stop("Package 'ggdist' is required for style = 'halfeye'.")
     }
 
     g <- ggplot2::ggplot(
@@ -316,6 +325,8 @@ Exemplos:
       ggplot2::aes(x = group, y = value, fill = group)
     ) +
       ggdist::stat_halfeye(
+        trim = FALSE,
+        alpha = 0.6,
         adjust = 0.6,
         width = 0.6,
         .width = c(0.5, 0.8, 0.95),
@@ -335,21 +346,12 @@ Exemplos:
         interval_color = "black",
         .width = 0.95
       ) +
-      ggplot2::annotate(
-        "text",
-        x = mean(seq_along(group_names)),
-        y = y_position,
-        label = signif_label,
-        size = 6,
-        fontface = "bold"
-      ) +
-      ggplot2::scale_fill_brewer(palette = "Set1") +
+      ggplot2::scale_fill_manual(values = colors_vivid) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
-        title = titulo,
-        subtitle = paste0("Mann-Whitney: ", p_label),
+        title = title,
         x = "",
-        y = y
+        y = ylab
       ) +
       ggplot2::theme(
         legend.position = "none",
@@ -361,11 +363,14 @@ Exemplos:
 
   print(g)
 
+  # ============================
+  # Return
+  # ============================
   invisible(
     list(
       summary = summary_table,
-      test = test_result,
-      plot = g
+      test    = test_result,
+      plot    = g
     )
   )
 }

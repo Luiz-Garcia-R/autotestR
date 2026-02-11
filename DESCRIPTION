@@ -1,6 +1,6 @@
 Package: autotestR
 Title: Automated Functions for Basic Statistical Tests
-Version: 1.1.10
+Version: 1.2.10
 Authors@R: 
     person("Luiz", "Garcia", 
            email = "luiz.cardoso@ufpr.br", 
@@ -25,7 +25,6 @@ Imports:
     ggplot2,
     ggdist,
     ggExtra,
-    multcompView,
     nortest,
     purrr,
     RColorBrewer,

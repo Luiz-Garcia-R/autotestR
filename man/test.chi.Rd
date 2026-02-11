@@ -10,7 +10,7 @@ test.chi(
   title = "Chi-square Test",
   xlab = NULL,
   ylab = "Proportion",
-  style = 1,
+  style = c("stacked", "barplot", "mosaic", "pie"),
   show_table = TRUE,
   help = FALSE,
   verbose = TRUE

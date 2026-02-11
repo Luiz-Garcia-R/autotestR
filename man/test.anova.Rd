@@ -7,9 +7,9 @@
 test.anova(
   ...,
   title = "ANOVA/Tukey HSD",
-  x = "X axis",
-  y = "Y axis",
-  style = 1,
+  xlab = "Group",
+  ylab = "Value",
+  style = c("boxplot", "violin", "monochrome", "halfeye"),
   help = FALSE,
   verbose = TRUE
 )
@@ -19,9 +19,9 @@ test.anova(
 
 \item{title}{Plot title.}
 
-\item{x}{X-axis label.}
+\item{xlab}{X-axis label.}
 
-\item{y}{Y-axis label.}
+\item{ylab}{Y-axis label.}
 
 \item{style}{Aesthetic style of the generated plot.}
 

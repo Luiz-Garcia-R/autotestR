@@ -147,7 +147,7 @@ Example (data frame):
           "Welch's t-test"
         }
       } else {
-        recommendation <- "Mann–Whitney test"
+        recommendation <- "Mann-Whitney test"
       }
 
     } else {
@@ -155,7 +155,7 @@ Example (data frame):
       if (all(normality_df$normal) && homogeneous) {
         recommendation <- "ANOVA with Tukey post hoc test"
       } else {
-        recommendation <- "Kruskal–Wallis with Dunn post hoc test"
+        recommendation <- "Kruskal-Wallis with Dunn post hoc test"
       }
     }
 
@@ -184,6 +184,9 @@ Example (data frame):
       message(separator)
     }
 
+    # ----------------------------
+    # Return
+    # ----------------------------
     return(invisible(list(
       normality = normality_df,
       p_homogeneity = p_homogeneity,
@@ -228,6 +231,9 @@ Example (data frame):
       message("Association test recommendation: ", recommendation)
     }
 
+    # ----------------------------
+    # Return
+    # ----------------------------
     return(invisible(list(
       contingency_table = contingency_table,
       recommendation = recommendation

@@ -5,8 +5,8 @@
 #'
 #' @param ... Vectors or a data.frame with >= 2 columns.
 #' @param title Plot title.
-#' @param x X-axis label.
-#' @param y Y-axis label.
+#' @param xlab X-axis label.
+#' @param ylab Y-axis label.
 #' @param style Aesthetic style of the generated plot.
 #' @param help If TRUE, shows help.
 #' @param verbose If TRUE, shows detailed messages.
@@ -22,8 +22,15 @@
 #' )
 #' test.anova(df)
 
-test.anova <- function(..., title = "ANOVA/Tukey HSD", x = "X axis", y = "Y axis",
-                       style = 1, help = FALSE, verbose = TRUE) {
+test.anova <- function(...,
+                       title = "ANOVA/Tukey HSD",
+                       xlab = "Group",
+                       ylab = "Value",
+                       style = c("boxplot", "violin", "monochrome", "halfeye"),
+                       help = FALSE,
+                       verbose = TRUE) {
+
+  style <- match.arg(style)
 
   # --- Quick help block ---
   if (help || length(list(...)) == 0) {
@@ -47,7 +54,7 @@ test.anova(df)
     return(invisible(NULL))
   }
 
-  required_packages <- c("ggplot2", "multcompView", "car")
+  required_packages <- c("ggplot2", "car")
   for (pkg in required_packages) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
       stop(paste0("Please install package: ", pkg))
@@ -68,11 +75,22 @@ test.anova(df)
   group_factor <- factor(rep(group_names, times = sapply(groups, length)))
   data_long <- data.frame(value = values, group = group_factor)
 
+  # -------------------------
+  # Normality test
+  # -------------------------
   apply_normality_test <- function(x) {
-    if (length(x) < 3) NA else shapiro.test(x)$p.value
+
+    out <- tryCatch(
+      shapiro.test(x)$p.value,
+      error = function(e) NA
+    )
+
+    out
   }
+
   p_normal <- sapply(groups, apply_normality_test)
-  normal <- all(p_normal > 0.05, na.rm = TRUE)
+
+  normal <- all(!is.na(p_normal) & p_normal > 0.05)
 
   p_levene <- tryCatch({
     if (length(groups) > 2) {
@@ -111,8 +129,30 @@ test.anova(df)
   model <- aov(value ~ group, data = data_long)
   p_anova <- summary(model)[[1]][["Pr(>F)"]][1]
 
-  # Automatic plot label
-  p_label <- paste0("ANOVA: p = ", signif(p_anova, 3))
+  # --- Effect size: Omega squared (ω²) ---
+  anova_tab <- summary(model)[[1]]
+
+  ss_between <- anova_tab[1, "Sum Sq"]
+  ss_within  <- anova_tab[nrow(anova_tab), "Sum Sq"]
+
+  df_between <- anova_tab[1, "Df"]
+  ms_within  <- anova_tab[nrow(anova_tab), "Mean Sq"]
+
+  ss_total <- ss_between + ss_within
+
+  omega_sq <- (ss_between - df_between * ms_within) /
+    (ss_total + ms_within)
+
+  # --- Bootstrap CI for omega squared ---
+  boot_omega <- .boot_anova_omega(
+    data  = data_long,
+    group = "group",
+    value = "value",
+    B = 2000
+  )
+
+  omega_ci_low  <- boot_omega$ci_low
+  omega_ci_high <- boot_omega$ci_high
 
   # Tukey table
   tukey_res <- TukeyHSD(model)$group
@@ -133,19 +173,6 @@ test.anova(df)
   tukey_df$Comparison <- rownames(tukey_res)
   rownames(tukey_df) <- NULL
 
-  # Significance letters
-  letters <- multcompView::multcompLetters4(model, TukeyHSD(model))
-  letters_df <- data.frame(
-    group = names(letters$group$Letters),
-    letter = letters$group$Letters,
-    stringsAsFactors = FALSE
-  )
-
-  # Compute vertical position for each letter
-  max_df <- aggregate(value ~ group, data = data_long, max)
-  letters_df <- merge(letters_df, max_df, by = "group")
-  letters_df$value <- letters_df$value + 0.2 * max(letters_df$value, na.rm = TRUE)
-
   # Means and SD
   means_sd <- aggregate(value ~ group, data = data_long,
                         function(x) c(mean = mean(x), sd = sd(x)))
@@ -154,29 +181,70 @@ test.anova(df)
 
   # Friendly output
   if (verbose) {
-    sep <- paste0(rep("=", 40), collapse = "")
-    message("\nGroup summary (mean / sd)")
-    message(sep)
-    print(
-      data.frame(
-        Group = means_sd$group,
-        Mean = round(means_sd$mean, 3),
-        SD = round(means_sd$sd, 3)))
-    message(sep)
+    .print_header("One-way ANOVA")
 
-    if (nrow(significant_pairs) == 0) {
-      message("No significant post-hoc comparisons (Tukey, p < 0.05).")
-    } else {
-      message("\nSignificant pairs (Tukey HSD):")
-      for (i in seq_len(nrow(significant_pairs))) {
-        row <- significant_pairs[i, ]
-        label_comp <- gsub("\\s*\\-\\s*", "-", row$Comparison)
-        label_comp <- gsub("-", " - ", label_comp)
-        message(sprintf("(%s, p = %s)",
-                        label_comp,
-                        signif(row$p_adj, 3)))
+    .print_block("Statistics", function() {
+
+      cat("F statistic = ",
+          round(anova_tab[1, "F value"], 3),
+          " | df = ",
+          anova_tab[1, "Df"], ", ",
+          anova_tab[nrow(anova_tab), "Df"],
+          " | p = ",
+          .format_pval(p_anova),
+          "\n", sep = "")
+
+      cat("Omega^2 = ",
+          round(omega_sq, 3),
+          " [",
+          round(omega_ci_low, 3), ", ",
+          round(omega_ci_high, 3),
+          "]\n", sep = "")
+
+    })
+
+    # --- Post-hoc output ---
+
+    .print_header("Post-hoc: Tukey HSD")
+
+    .print_block("Significant comparisons", function() {
+
+      if (nrow(significant_pairs) == 0) {
+
+        cat("No significant comparisons (p < 0.05)\n")
+
+      } else {
+
+        for (i in seq_len(nrow(significant_pairs))) {
+
+          r <- significant_pairs[i, ]
+
+          comps <- unlist(strsplit(r$Comparison, "-"))
+
+          g1 <- trimws(comps[1])
+          g2 <- trimws(comps[2])
+
+          cat(g1, " vs ", g2, "\n", sep = "")
+
+          cat(
+            "Mean difference = ",
+            round(r$diff, 3),
+            " [",
+            round(r$lwr, 3), ", ",
+            round(r$upr, 3),
+            "]\n",
+            sep = ""
+          )
+
+          cat(
+            "p (adj) = ",
+            .format_pval(r$p_adj),
+            "\n\n",
+            sep = ""
+          )
+        }
       }
-    }
+    })
   }
 
   vivid_colors <- scales::hue_pal()(length(unique(data_long$group)))
@@ -184,58 +252,49 @@ test.anova(df)
   # --------------------------
   # Plot styles
   # --------------------------
-  if (style == 1) {
+  if (style == "boxplot") {
     g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
       ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA) +
       ggplot2::geom_jitter(width = 0.1, alpha = 0.5, color = "black") +
-      ggplot2::geom_text(data = letters_df,
-                         ggplot2::aes(x = group, y = value, label = letter),
-                         size = 4, vjust = 0) +
-      ggplot2::labs(title = title, subtitle = p_label, x = "", y = y) +
+      ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::theme(legend.position = "none",
                      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
   }
 
-  if (style == 2) {
+  if (style == "violin") {
     g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggplot2::geom_violin(trim = FALSE, alpha = 0.55, color = NA, adjust = 0.6) +
+      ggplot2::geom_violin(trim = FALSE, alpha = 0.6, color = NA, adjust = 0.6) +
       ggplot2::geom_boxplot(width = 0.18, outlier.shape = NA,
                             color = "gray20", linewidth = 0.4) +
       ggplot2::geom_point(position = ggplot2::position_jitter(width = 0.1),
                           alpha = 0.4, size = 1.8, color = "gray25") +
-      ggplot2::geom_text(data = letters_df,
-                         ggplot2::aes(x = group, y = value, label = letter),
-                         size = 4, vjust = 0) +
-      ggplot2::labs(title = title, subtitle = p_label, x = "", y = y) +
+      ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::theme(legend.position = "none",
                      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
   }
 
-  if (style == 3) {
+  if (style == "monochrome") {
     g <- ggplot2::ggplot(data_long, ggplot2::aes(group, value)) +
-      ggplot2::geom_violin(fill = "gray85", color = NA) +
+      ggplot2::geom_violin(alpha = 0.6, trim = FALSE, fill = "gray85", color = NA) +
       ggplot2::geom_boxplot(width = 0.18, fill = "white") +
       ggplot2::geom_point(position = ggplot2::position_jitter(width = 0.1),
                           color = "gray20", alpha = 0.4) +
-      ggplot2::geom_text(data = letters_df,
-                         ggplot2::aes(x = group, y = value, label = letter),
-                         size = 4, vjust = 0) +
-      ggplot2::labs(title = title, subtitle = p_label, x = "", y = y) +
+      ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::theme(legend.position = "none",
                      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
   }
 
-  if (style == 4) {
+  if (style == "halfeye") {
     if (!requireNamespace("ggdist", quietly = TRUE)) {
-      stop("For style 4, please install the 'ggdist' package")
+      stop("For 'halfeye' style, please install the 'ggdist' package")
     }
     g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggdist::stat_halfeye(adjust = 0.6, width = 0.6,
+      ggdist::stat_halfeye(alpha = .6, trim = FALSE, adjust = 0.6, width = 0.6,
                            .width = c(0.5, 0.8, 0.95),
                            justification = -0.2,
                            slab_color = "gray20",
@@ -246,10 +305,7 @@ test.anova(df)
                                  point_color = "black",
                                  interval_color = "black",
                                  .width = 0.95) +
-      ggplot2::geom_text(data = letters_df,
-                         ggplot2::aes(x = group, y = value, label = letter),
-                         size = 4, vjust = 0) +
-      ggplot2::labs(title = title, subtitle = p_label, x = "", y = y) +
+      ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::theme(legend.position = "none",
                      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
@@ -260,6 +316,8 @@ test.anova(df)
   return(invisible(list(
     type = "ANOVA",
     p_anova = p_anova,
+    omega_sq = omega_sq,
+    omega_ci = c(omega_ci_low, omega_ci_high),
     normal = normal,
     p_normal = p_normal,
     homogeneous = homogeneous,
@@ -267,7 +325,6 @@ test.anova(df)
     means_sd = means_sd,
     tukey = tukey_df,
     significant_pairs = significant_pairs,
-    letters = letters_df,
     model = model
   )))
 }

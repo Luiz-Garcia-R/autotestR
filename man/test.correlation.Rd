@@ -2,55 +2,109 @@
 % Please edit documentation in R/Correlation_test.R
 \name{test.correlation}
 \alias{test.correlation}
-\title{Correlation test (Pearson, Spearman or Kendall)}
+\alias{print.test.correlation}
+\title{Correlation Analysis with Automatic Method Selection}
 \usage{
 test.correlation(
   x,
   y = NULL,
   method = "auto",
-  style = 1,
+  main = NULL,
+  xlab = NULL,
+  ylab = NULL,
+  style = c("simple", "inference", "structure", "density", "distribution"),
   help = FALSE,
   verbose = TRUE,
   plot_normality = FALSE
 )
+
+\method{print}{test.correlation}(x, ...)
 }
 \arguments{
-\item{x}{Numeric vector or data frame with two numeric columns}
+\item{x}{Numeric vector or data frame with exactly two numeric columns.}
 
-\item{y}{Numeric vector (optional if x is a data frame)}
+\item{y}{Numeric vector (optional if \code{x} is a data frame).}
 
-\item{method}{Correlation method: "auto" (default), "pearson", "spearman" or "kendall"}
+\item{method}{Correlation method: \code{"auto"} (default), \code{"pearson"},
+\code{"spearman"}, or \code{"kendall"}.}
 
-\item{style}{Plot aesthetic style.}
+\item{main}{Plot title. If \code{NULL}, an automatic title is generated.
+If \code{FALSE}, no title is displayed.}
 
-\item{help}{If TRUE, displays a detailed explanation of the function}
+\item{xlab}{Label for the x-axis. If \code{NULL}, a label is inferred
+from the input. If \code{FALSE}, no label is shown.}
 
-\item{verbose}{If TRUE, prints messages about the chosen method and normality tests}
+\item{ylab}{Label for the y-axis. If \code{NULL}, a label is inferred
+from the input. If \code{FALSE}, no label is shown.}
 
-\item{plot_normality}{If TRUE, generates QQ-plots to assess data normality}
+\item{style}{Plot style: \code{"simple"} (default), \code{"inference"},
+\code{"structure"}, \code{"density"}, or \code{"distribution"}.}
+
+\item{help}{Logical. If \code{TRUE}, displays a detailed usage guide.}
+
+\item{verbose}{Logical. If \code{TRUE}, prints information about method
+selection and diagnostics.}
+
+\item{plot_normality}{Logical. If \code{TRUE}, displays QQ-plots for
+normality assessment.}
+
+\item{...}{Additional arguments passed to other print methods (currently ignored)}
 }
 \value{
-Invisible object of class htest with the correlation test result
+An object of class \code{"test.correlation"} containing:
+\itemize{
+\item \code{call}: Matched function call.
+\item \code{data}: Input data (if \code{n ≤ 5000}).
+\item \code{n}: Sample size.
+\item \code{method}: Selected correlation method.
+\item \code{estimate}: Correlation coefficient.
+\item \code{effect}: Effect size information (r, rho, or tau, and r² when applicable).
+\item \code{conf.int}: Confidence interval.
+\item \code{p.value}: P-value of the test.
+\item \code{interpretation}: Qualitative interpretation of effect size.
+\item \code{diagnostics}: Normality, ties, and outlier diagnostics.
+\item \code{decision}: Automatic selection rationale.
+\item \code{htest}: Underlying \code{stats::cor.test} object.
+\item \code{plot}: \code{ggplot2} object.
+}
 }
 \description{
-Performs correlation testing between two numeric variables, automatically choosing
-between Pearson, Spearman or Kendall based on normality, ties and outliers.
-Optionally displays diagnostic plots and a correlation plot with trend line.
+Performs correlation analysis between two numeric variables using Pearson,
+Spearman, or Kendall methods. When \code{method = "auto"}, the function
+automatically selects the most appropriate method based on normality,
+presence of ties, and proportion of outliers.
+}
+\details{
+In addition to hypothesis testing, the function provides diagnostic
+information, effect size interpretation, and publication-ready
+visualizations.
+
+Method selection in automatic mode follows these rules:
+\itemize{
+\item If more than 5\\% of observations are classified as outliers,
+Kendall's tau is used.
+\item If both variables are normally distributed and no ties are present,
+Pearson's correlation is used.
+\item Otherwise, Spearman's rank correlation is applied.
+}
+
+Normality is assessed using Shapiro-Wilk (n ≤ 50), Anderson-Darling
+(50 < n ≤ 300), or Kolmogorov-Smirnov (n > 300) tests.
 }
 \examples{
-# Pearson
+# Pearson (approximately normal data)
 set.seed(123)
 x <- rnorm(50, sd = 0.1)
 y <- x + rnorm(50, sd = 0.1)
 test.correlation(x, y)
 
-# Spearman
+# Spearman (non-normal data)
 set.seed(123)
 x <- runif(300)
 y <- log(x + 0.1) + rnorm(300, sd = 0.5)
 test.correlation(x, y)
 
-# Kendall
+# Kendall (ties and outliers)
 set.seed(123)
 x <- runif(1000, 1, 100)
 y <- sin(x) * 30 + rnorm(1000, 0, 10)
@@ -62,4 +116,8 @@ x <- c(x, x_out)
 y <- c(y, y_out)
 test.correlation(x, y)
 
+}
+\seealso{
+\code{\link[stats]{cor.test}},
+\code{\link[ggplot2]{ggplot}}
 }

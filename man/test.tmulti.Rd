@@ -2,8 +2,7 @@
 % Please edit documentation in R/Multi_T_test.R
 \name{test.tmulti}
 \alias{test.tmulti}
-\title{Multiple comparisons between numeric groups (t-test or Mann–Whitney),
-with automatic diagnostics and annotated plot}
+\title{Multiple pairwise comparisons with diagnostics}
 \usage{
 test.tmulti(
   ...,
@@ -11,23 +10,18 @@ test.tmulti(
   title = "Multiple comparisons (t / MW)",
   xlab = "",
   ylab = "Value",
-  style = 1,
+  style = c("boxplot", "violin", "monochrome", "halfeye"),
+  p_adjust = c("none", "holm", "BH", "bonferroni"),
   help = FALSE,
   verbose = TRUE
 )
 }
 \arguments{
-\item{...}{A data frame containing only numeric columns, or multiple
-named numeric vectors (each representing a group).}
+\item{...}{Numeric vectors or a data.frame with groups in columns.}
 
-\item{comparisons}{Flexible format. Can be:
-\itemize{
-\item \code{NULL} (default), testing all pairwise comparisons;
-\item \code{list(c("A","B"), c("C","D"))};
-\item character vector of even length, e.g. \code{c("A","B","C","D")};
-\item a single pair, e.g. \code{c("A","B")};
-\item a string such as \code{"A,B"} or \code{"A - B"}.
-}}
+\item{comparisons}{List of character vectors specifying pairwise
+comparisons (e.g. list(c("A","B"), c("B","C"))).
+If NULL, all pairwise combinations are used.}
 
 \item{title}{Plot title.}
 
@@ -35,39 +29,39 @@ named numeric vectors (each representing a group).}
 
 \item{ylab}{Y-axis label.}
 
-\item{style}{Integer 1–4 defining the plot style:
-1 = boxplot;
-2 = violin + boxplot;
-3 = minimalist violin;
-4 = half-eye (requires ggdist).}
+\item{style}{Plot style. One of "boxplot", "violin",
+"monochrome", or "halfeye".}
 
-\item{help}{Logical. If TRUE, shows quick help.}
+\item{p_adjust}{Method for multiple testing correction.
+One of "none", "holm", "BH", "bonferroni".}
 
-\item{verbose}{Logical. If TRUE (default), prints messages and summaries.}
+\item{help}{Logical. If TRUE, prints usage examples.}
+
+\item{verbose}{Logical. If TRUE, prints results and plots.}
 }
 \value{
-An invisible list with:
-\itemize{
-\item \code{results}: tibble with group1, group2, method (t/MW) and p-value;
-\item \code{significant_pairs}: subset with p < 0.05;
-\item \code{plot}: final ggplot object;
-\item \code{data_long}: data in long format.
+A list with:
+\describe{
+\item{results}{A tibble with test results.}
+\item{plot}{A ggplot object.}
+\item{data_long}{Long-format data used for plotting.}
 }
 }
 \description{
-Performs multiple pairwise comparisons between numeric groups (e.g. columns
-of a data frame or named vectors) using either Student's t-test or the
-Mann–Whitney test (MW), automatically selected based on normality
-(Shapiro–Wilk) and homogeneity of variances (Levene's test).
+Performs multiple pairwise comparisons using Student's t-test
+or Mann-Whitney test, with automatic diagnostics, effect sizes,
+confidence intervals, multiple testing correction and visualization.
 }
 \details{
-The function also:
+Normality is assessed using Shapiro-Wilk tests and homogeneity
+of variances using Levene's test. If assumptions are met, a
+pooled-variance t-test is used. Otherwise, the Mann-Whitney test
+is applied with bootstrap confidence intervals.
+
+Effect sizes:
 \itemize{
-\item accepts flexible input formats to define comparisons
-(list of pairs, character vectors, strings, etc.);
-\item prints descriptive summaries (mean / SD) and highlights significant pairs;
-\item generates annotated plots with significance bars and four visual styles;
-\item returns full results for programmatic use.
+\item Cohen's d for t-tests
+\item Rank-biserial correlation for Mann-Whitney
 }
 }
 \examples{
@@ -78,12 +72,12 @@ df <- data.frame(
   test2     = rnorm(30, 15)
 )
 
-test.tmulti(df)
-
 test.tmulti(
   df,
-  comparisons = list(c("control", "treatment"),
-                     c("treatment", "test1"))
+  comparisons = list(
+    c("control", "treatment"),
+    c("treatment", "test1")
+  )
 )
 
 }

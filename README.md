@@ -4,7 +4,15 @@
 <!-- badges: start -->
 <!-- badges: end -->
 
-**autotestR** is an R package designed to simplify the execution of the main statistical tests commonly used in the life sciences. It provides user-friendly functions that automatically generate plots and clear explanations, making statistical analysis more accessible for researchers and students.
+## Overview
+
+**autotestR** is an R package designed to simplify and improve statistical analysis
+in the life sciences.
+
+It combines automatic test selection, diagnostic evaluation,
+effect size reporting, and intuitive visualization to support
+transparent and responsible data interpretation.
+
 
 ## Installation
 
@@ -18,18 +26,55 @@ install.packages("devtools")
 devtools::install_github("https://github.com/Luiz-Garcia-R/autotestR.git")
 ```
 
-# Main features
 
-- t test (independent and paired)
-- Mann–Whitney test (Wilcoxon rank-sum)
-- Multiple group comparison (t test or Mann–Whitney)
-- Chi-squared test and Fisher’s exact test
-- One-way ANOVA with Tukey HSD post hoc test
-- Kruskal–Wallis test with Dunn post hoc test
-- Pearson, Spearman, and Kendall correlation tests with automatic plots
-- Diagnostic function that suggests the most appropriate statistical test
-- Intuitive plots fully integrated into the functions
+## Philosophy
 
+autotestR is designed to go beyond "p-value driven" analysis.
+
+The package emphasizes:
+
+- Effect sizes and confidence intervals
+- Automatic diagnostic checks
+- Warnings when test assumptions are violated
+- Transparent reporting of uncertainty
+- Encouragement of biological interpretation over mechanical decision-making
+
+The goal is to support reproducible, interpretable, and responsible data analysis in the life sciences.
+
+
+## Main features
+
+- Automatic selection and execution of classical statistical tests
+- Integrated assumption diagnostics and warnings
+- Effect size estimation with confidence intervals
+- Robust alternatives for non-normal data
+- Built-in graphical summaries
+- Consistent and interpretable outputs
+- Support for categorical, continuous, and correlation analyses
+
+
+## What makes autotestR different?
+
+Unlike many statistical wrappers that focus mainly on hypothesis testing,
+autotestR prioritizes interpretation.
+
+Instead of providing only p-values, the package:
+
+- Reports effect sizes whenever possible
+- Highlights uncertainty
+- Flags potential violations of assumptions
+- Encourages users to look beyond statistical significance
+
+This makes autotestR especially suitable for exploratory and applied research in biology, medicine, and veterinary sciences.
+
+
+## Automatic diagnostics and warnings
+
+Many functions in autotestR automatically evaluate key assumptions
+(e.g., normality, homoscedasticity, expected frequencies).
+
+When potential issues are detected, the user is informed through
+clear warnings and messages, helping prevent inappropriate test usage.
 
 ### Basic usage
 

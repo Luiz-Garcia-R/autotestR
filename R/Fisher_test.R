@@ -3,13 +3,13 @@
 #' Performs Fisher's Exact Test using two categorical vectors or a data frame with two columns,
 #' constructing a contingency table and optionally generating graphical visualizations.
 #'
-#' @param x_var Categorical vector or data frame with two columns.
-#' @param y_var Categorical vector (required if x_var is a vector).
+#' @param x Categorical vector or data frame with two columns.
+#' @param y Categorical vector (required if x_var is a vector).
 #' @param title Plot title (string). Default: "Fisher's Exact Test"
-#' @param x_label Name of the x-axis in the plot (string). Default: NULL (uses variable name)
-#' @param y_label Name of the y-axis in the plot (string). Default: "Proportion"
+#' @param xlab Name of the x-axis in the plot (string). Default: NULL (uses variable name)
+#' @param ylab Name of the y-axis in the plot (string). Default: "Proportion"
+#' @param style Plot style. Controls the visualization type
 #' @param show_table Logical. If TRUE, prints the contingency table to the console. Default: TRUE
-#' @param style Plot style. Controls the visualization type.
 #' @param help Logical. If TRUE, shows detailed function explanation. Default: FALSE
 #' @param verbose Logical. If TRUE, prints detailed test messages. Default: TRUE
 #'
@@ -21,33 +21,36 @@
 #'                    treatment = c("healthy","healthy","healthy","healthy","sick"))
 #' test.fisher(data)
 
-test.fisher <- function(x_var, y_var = NULL,
-                             title = "Fisher's Exact Test",
-                             x_label = NULL,
-                             y_label = "Proportion",
-                             style = 1,
-                             show_table = TRUE,
-                             help = FALSE,
-                             verbose = TRUE) {
+test.fisher <- function(x, y = NULL,
+                        title = "Fisher's Exact Test",
+                        xlab = NULL,
+                        ylab = "Proportion",
+                        style = c("stacked", "barplot", "mosaic", "pie"),
+                        show_table = TRUE,
+                        help = FALSE,
+                        verbose = TRUE) {
 
-  # Help section
-  if (help || missing(x_var)) {
+  style <- match.arg(style)
+
+  # Help
+  if (help || missing(x)) {
     if (verbose) {
       message(
         "Function test.fisher()
 
 Description:
-  Performs Fisher's Exact Test to assess whether there is a significant association
-  between two categorical variables.
+  Performs Fisher's Exact Test to evaluate association between
+  two categorical variables.
 
 When to use:
-  - Two categorical variables (factors)
-  - Small contingency tables (especially 2x2)
-  - Expected frequencies below 5
+  - Small samples
+  - Expected frequencies < 5
+  - Especially for 2x2 tables
 
-Difference between Fisher and Chi-square:
-  - Fisher: exact probability of observed combinations
-  - Chi-square: theoretical approximation requiring larger samples"
+Effect size:
+  - Odds Ratio (OR)
+  - log(OR) with confidence interval
+"
       )
     }
     return(invisible(NULL))
@@ -60,146 +63,191 @@ Difference between Fisher and Chi-square:
       stop(
         paste0(
           "Package '", pkg,
-          "' is not installed. Install it with install.packages('", pkg, "')"
-        )
+          "' is not installed. Install it first."
+        ),
+        call. = FALSE
       )
     }
   }
 
-  # Case: x_var is a data frame with two columns
-  if (is.data.frame(x_var)) {
-    if (ncol(x_var) != 2) {
-      stop("The data frame must contain exactly two categorical columns.")
+  # -----------------------------
+  # Input handling
+  # -----------------------------
+
+  if (is.data.frame(x)) {
+
+    if (ncol(x) != 2) {
+      stop("The data frame must contain exactly two columns.", call. = FALSE)
     }
 
-    column_names <- colnames(x_var)
+    column_names <- colnames(x)
 
     data_long <- tidyr::pivot_longer(
-      x_var,
-      cols = everything(),
+      x,
+      cols = tidyselect::everything(),
       names_to = "group",
       values_to = "category"
     )
 
     data_long$group <- factor(
       data_long$group,
-      levels = column_names,
-      labels = column_names
+      levels = column_names
     )
 
-    group_var <- data_long$group
-    category_var <- data_long$category
+    group <- data_long$group
+    category <- data_long$category
 
-    x_name <- column_names[1]
-    y_name <- column_names[2]
+    name_x <- column_names[1]
+    name_y <- column_names[2]
 
   } else {
-    # Case: x_var and y_var are vectors
-    if (is.null(y_var)) {
-      stop("y_var must be provided when x_var is a vector.")
-    }
-    if (length(x_var) != length(y_var)) {
-      stop("The variables must have the same length.")
+
+    if (is.null(y)) {
+      stop("Argument 'y' must be provided if 'x' is a vector.", call. = FALSE)
     }
 
-    group_var <- x_var
-    category_var <- y_var
+    if (length(x) != length(y)) {
+      stop("Both variables must have the same length.", call. = FALSE)
+    }
 
-    x_name <- deparse(substitute(x_var))
-    y_name <- deparse(substitute(y_var))
-    x_name <- sub(".*\\$", "", x_name)
-    y_name <- sub(".*\\$", "", y_name)
+    group <- x
+    category <- y
+
+    name_x <- deparse(substitute(x))
+    name_y <- deparse(substitute(y))
+
+    name_x <- sub(".*\\$", "", name_x)
+    name_y <- sub(".*\\$", "", name_y)
   }
 
-  if (is.null(x_label)) x_label <- x_name
-  if (is.null(y_label)) y_label <- "Proportion"
+  if (is.null(xlab)) xlab <- name_x
+  if (is.null(ylab)) ylab <- "Proportion"
 
+
+  # -----------------------------
   # Contingency table
-  contingency_table <- table(group_var, category_var)
+  # -----------------------------
+
+  contingency_table <- table(group, category)
 
   if (verbose && show_table) {
     message("Observed contingency table:")
     print(contingency_table)
   }
 
-  if (any(dim(contingency_table) > 2) && verbose) {
-    message(
-      "The table dimension is larger than 2x2. Fisher's test may be computationally intensive, ",
-      "and the p-value is an approximation."
-    )
-  }
+  # -----------------------------
+  # Fisher test
+  # -----------------------------
 
-  # Fisher's Exact Test
-  test_result <- stats::fisher.test(contingency_table)
+  test <- stats::fisher.test(contingency_table)
+
+  # -----------------------------
+  # Effect size (Odds Ratio)
+  # -----------------------------
+
+  or <- as.numeric(test$estimate)
+  ci <- test$conf.int
+
+  log_or <- log(or)
+  log_ci <- log(ci)
+
+  # -----------------------------
+  # Output
+  # -----------------------------
 
   if (verbose) {
-    message("Fisher's Exact Test")
-    message("------------------")
-    message("p-value: ", signif(test_result$p.value, 4))
+
+    .print_header("Fisher's Exact Test")
+
+    .print_block("Statistics", function() {
+
+      cat(
+        "p = ",
+        .format_pval(test$p.value),
+        "\n",
+        sep = ""
+      )
+
+      cat(
+        "Odds Ratio = ",
+        round(or, 3),
+        " [",
+        round(ci[1], 3), ", ",
+        round(ci[2], 3),
+        "]\n",
+        sep = ""
+      )
+
+      cat(
+        "log(OR) = ",
+        round(log_or, 3),
+        " [",
+        round(log_ci[1], 3), ", ",
+        round(log_ci[2], 3),
+        "]\n",
+        sep = ""
+      )
+    })
   }
 
-  # Data preparation for plotting
-  plot_data <- data.frame(group = group_var, category = category_var)
+  # -----------------------------
+  # Plot data
+  # -----------------------------
 
-  proportion_data <- plot_data |>
+  df_plot <- data.frame(group = group, category = category)
+
+  df_prop <- df_plot |>
     dplyr::group_by(group, category) |>
     dplyr::summarise(n = dplyr::n(), .groups = "drop") |>
     dplyr::group_by(group) |>
-    dplyr::mutate(proportion = n / sum(n))
+    dplyr::mutate(prop = n / sum(n))
 
-  # --------------------------
-  # STYLE 1 (Stacked bar plot)
-  # --------------------------
-  if (style == 1) {
+  vivid_colors <- scales::hue_pal()(length(unique(df_prop$group)))
+
+  # -----------------------------
+  # Plots
+  # -----------------------------
+
+  if (style == "stacked") {
+
     g <- ggplot2::ggplot(
-      proportion_data,
-      ggplot2::aes(x = group, y = proportion, fill = category)
+      df_prop,
+      ggplot2::aes(x = group, y = prop, fill = category)
     ) +
       ggplot2::geom_bar(stat = "identity") +
-      ggplot2::scale_fill_brewer(palette = "Set1") +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::labs(
         title = title,
-        x = "",
-        y = y_label,
-        fill = y_name
+        y = ylab,
+        fill = name_y
       ) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::theme(
-        legend.position = "right",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
-      )
+      ggplot2::theme_minimal()
+
   }
 
-  # --------------------------
-  # STYLE 2 (Side-by-side bars)
-  # --------------------------
-  if (style == 2) {
+
+  if (style == "barplot") {
+
     g <- ggplot2::ggplot(
-      proportion_data,
-      ggplot2::aes(x = group, y = proportion, fill = category)
+      df_prop,
+      ggplot2::aes(x = group, y = prop, fill = category)
     ) +
       ggplot2::geom_bar(
         stat = "identity",
-        position = ggplot2::position_dodge(width = 0.8)
+        position = ggplot2::position_dodge()
       ) +
-      ggplot2::scale_fill_brewer(palette = "Set1") +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::labs(
         title = title,
-        x = "",
-        y = y_label,
-        fill = y_name
+        y = ylab,
+        fill = name_y
       ) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::theme(
-        legend.position = "right",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
-      )
+      ggplot2::theme_minimal()
   }
 
-  # --------------------------
-  # STYLE 3 (Mosaic plot)
-  # --------------------------
-  if (style == 3) {
+
+  if (style == "mosaic") {
+
     vcd::mosaic(
       contingency_table,
       shade = TRUE,
@@ -208,34 +256,38 @@ Difference between Fisher and Chi-square:
     )
   }
 
-  # --------------------------
-  # STYLE 4 (Pie chart by group)
-  # --------------------------
-  if (style == 4) {
+
+  if (style == "pie") {
+
     g <- ggplot2::ggplot(
-      proportion_data,
-      ggplot2::aes(x = "", y = proportion, fill = category)
+      df_prop,
+      ggplot2::aes(x = "", y = prop, fill = category)
     ) +
-      ggplot2::geom_bar(stat = "identity", width = 1, color = "white") +
+      ggplot2::geom_bar(stat = "identity", width = 1) +
       ggplot2::coord_polar("y") +
       ggplot2::facet_wrap(~ group) +
-      ggplot2::scale_fill_brewer(palette = "Set1") +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::theme_void() +
       ggplot2::labs(
         title = title,
-        fill = y_name,
-        x = NULL,
-        y = NULL
-      ) +
-      ggplot2::theme_void(base_size = 12) +
-      ggplot2::theme(
-        strip.text = ggplot2::element_text(size = 12),
-        plot.title = ggplot2::element_text(
-          hjust = 0.5,
-          margin = ggplot2::margin(b = 25)
-        )
+        fill = name_y
       )
   }
 
-  if (style != 3) print(g)
-  invisible(test_result)
+  if (style != "mosaic") print(g)
+
+  # -----------------------------
+  # Return
+  # -----------------------------
+
+  invisible(list(
+    type = "Fisher",
+    p = test$p.value,
+    odds_ratio = or,
+    or_ci = ci,
+    log_or = log_or,
+    log_or_ci = log_ci,
+    table = contingency_table,
+    data = df_plot
+  ))
 }

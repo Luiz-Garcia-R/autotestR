@@ -1,29 +1,67 @@
 #' Kruskal-Wallis Test with Dunn Post-hoc
 #'
-#' Performs the Kruskal-Wallis test for comparing multiple independent groups,
-#' followed by Dunn's post-hoc test with Bonferroni correction.
+#' Performs the Kruskal-Wallis rank-sum test for comparing three or more
+#' independent groups, followed by Dunn's post-hoc test with multiple
+#' comparison adjustment.
 #'
-#' @param ... Numeric vectors or a data frame with two or more columns (each representing a group)
-#' @param title Plot title (default = "Kruskal-Wallis + Dunn")
-#' @param x_label X-axis label (default = "Group")
-#' @param y_label Y-axis label (default = "Value")
-#' @param style Plot style.
-#' @param help Logical. If TRUE, shows help message
-#' @param verbose Logical. If TRUE, prints detailed messages (default = TRUE)
+#' This function is a non-parametric alternative to one-way ANOVA and is
+#' recommended when normality or homoscedasticity assumptions are violated.
 #'
-#' @return Kruskal-Wallis test object (invisible)
+#' @param ... Numeric vectors representing groups, or a data frame with
+#'   two or more columns (each column is treated as a group).
+#' @param title Character. Plot title.
+#' @param xlab Character. X-axis label.
+#' @param ylab Character. Y-axis label.
+#' @param style Character. Plot style. One of:
+#'   \code{"boxplot"}, \code{"violin"}, \code{"monochrome"}, or \code{"halfeye"}.
+#' @param adjust Character. Method for p-value adjustment in Dunn's test.
+#'   One of \code{"bonferroni"}, \code{"holm"}, or \code{"BH"}.
+#' @param help Logical. If \code{TRUE}, displays a short help message and exits.
+#' @param verbose Logical. If \code{TRUE}, prints formatted statistical results
+#'   to the console.
+#'
+#' @return Invisibly returns a list with the following components:
+#'   \describe{
+#'     \item{type}{Test type.}
+#'     \item{H}{Kruskal-Wallis H statistic.}
+#'     \item{df}{Degrees of freedom.}
+#'     \item{p}{Global test p-value.}
+#'     \item{epsilon_sq}{Epsilon-squared effect size.}
+#'     \item{epsilon_ci}{Bootstrap confidence interval for effect size.}
+#'     \item{means_sd}{Group means and standard deviations.}
+#'     \item{dunn}{Dunn post-hoc results.}
+#'     \item{significant_pairs}{Significant pairwise comparisons.}
+#'     \item{data}{Long-format data used in the analysis.}
+#'   }
+#'
+#' @examples
+#' set.seed(123)
+#'
+#' n <- 25
+#'
+#' df <- data.frame(
+#'   control    = rexp(n, rate = 1),
+#'   treatment1 = rexp(n, rate = 0.6),
+#'   treatment2 = rgamma(n, shape = 2, scale = 1)
+#' )
+#'
+#' test.kruskal(df)
+#'
 #' @export
 
 test.kruskal <- function(...,
-                              title = "Kruskal-Wallis + Dunn",
-                              x_label = "Group",
-                              y_label = "Value",
-                              style = 1,
-                              help = FALSE,
-                              verbose = TRUE) {
+                         title = "Kruskal-Wallis + Dunn",
+                         xlab = "Group",
+                         ylab = "Value",
+                         style = c("boxplot", "violin", "monochrome", "halfeye"),
+                         adjust = c("bonferroni", "holm", "BH"),
+                         help = FALSE,
+                         verbose = TRUE) {
 
   # Capture arguments
   args <- list(...)
+  style <- match.arg(style)
+  adjust <- match.arg(adjust)
 
   # Allow data frame input
   if (length(args) == 1 && is.data.frame(args[[1]]) && ncol(args[[1]]) >= 2) {
@@ -45,18 +83,23 @@ Description:
   Ideal for comparing three or more independent groups with non-normal data.
 
 Example:
-  df <- data.frame(
-    control = c(5, 6, 7),
-    treatment1 = c(8, 9, 10),
-    treatment2 = c(2, 3, 4)
-  )
-  test.kruskal(df)
+  set.seed(123)
+
+n <- 25
+
+df <- data.frame(
+    control    = rexp(n, rate = 1.5),
+    treatment1 = rexp(n, rate = 1),
+    treatment2 = rgamma(n, shape = 2, scale = 1)
+)
+
+test.kruskal(df, style = 'violin')
 ")
-    return(invisible(NULL))
+return(invisible(NULL))
   }
 
   # Required packages
-  required_packages <- c("ggplot2", "FSA", "dplyr", "multcompView", "RColorBrewer")
+  required_packages <- c("ggplot2", "FSA", "dplyr", "RColorBrewer")
   lapply(required_packages, function(pkg) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
       stop(sprintf("Package '%s' is not installed.", pkg), call. = FALSE)
@@ -76,11 +119,32 @@ Example:
   kruskal_res <- stats::kruskal.test(value ~ group, data = data)
   p_kruskal <- kruskal_res$p.value
 
-  p_label <- ifelse(
-    p_kruskal < 0.001,
-    "Kruskal-Wallis: p < 0.001",
-    paste0("Kruskal-Wallis: p = ", signif(p_kruskal, 3))
-  )
+  # -----------------------------
+  # Effect size: Epsilon squared
+  # -----------------------------
+
+  k <- length(unique(data$group))
+  n <- nrow(data)
+  H <- as.numeric(kruskal_res$statistic)
+
+  epsilon_sq <- (H - k + 1) / (n - k)
+
+  # Bootstrap CI
+  set.seed(123)
+
+  boot_eps <- replicate(2000, {
+
+    idx <- sample(seq_len(n), replace = TRUE)
+    d_boot <- data[idx, ]
+
+    H_boot <- suppressWarnings(
+      kruskal.test(value ~ group, data = d_boot)$statistic
+    )
+
+    (H_boot - k + 1) / (n - k)
+  })
+
+  eps_ci <- quantile(boot_eps, c(0.025, 0.975), na.rm = TRUE)
 
   # Means and standard deviations (no automatic printing)
   mean_sd <- aggregate(
@@ -91,81 +155,107 @@ Example:
   mean_sd <- do.call(data.frame, mean_sd)
   colnames(mean_sd)[2:3] <- c("mean", "sd")
 
-  if (verbose) {
-    sep <- paste0(rep("=", 50), collapse = "")
-    message("Means and standard deviations by group")
-    message(sep)
-    print(mean_sd)
-    message(sep)
-  }
-
   # -----------------------------
   # Dunn post-hoc test
   # -----------------------------
   suppressMessages({
     suppressWarnings({
-      dunn_res <- FSA::dunnTest(value ~ group, data = data, method = "bonferroni")
+      dunn_res <- FSA::dunnTest(
+        value ~ group,
+        data = data,
+        method = adjust
+      )
     })
   })
 
   dunn_df <- dunn_res$res
   significant_pairs <- subset(dunn_df, P.adj < 0.05)
 
+
+  # -----------------------------
+  # Output
+  # -----------------------------
   if (verbose) {
-    if (nrow(significant_pairs) == 0) {
-      message("No significant post-hoc comparisons (p < 0.05).")
-    } else {
-      msg <- paste0(
-        "(",
-        significant_pairs$Comparison,
-        ", p = ",
-        signif(significant_pairs$P.adj, 3),
-        ")"
+
+    .print_header("Kruskal-Wallis")
+
+    .print_block("Statistics", function() {
+
+      cat(
+        "H statistic = ",
+        round(H, 3),
+        " | df = ",
+        k - 1,
+        " | p = ",
+        .format_pval(p_kruskal),
+        "\n",
+        sep = ""
       )
-      message("Significant pairs (Dunn, Bonferroni):")
-      message(paste(msg, collapse = "\n"))
-    }
+
+      cat(
+        "Epsilon squared = ",
+        round(epsilon_sq, 3),
+        " [",
+        round(eps_ci[1], 3), ", ",
+        round(eps_ci[2], 3),
+        "]\n",
+        sep = ""
+      )
+    })
+
+    # --- Post-hoc output ---
+
+    .print_header(paste0("Post-hoc: Dunn (", adjust, ")"))
+
+    .print_block("Significant comparisons", function() {
+
+      if (nrow(significant_pairs) == 0) {
+
+        cat("No significant comparisons (p < 0.05)\n")
+
+      } else {
+
+        for (i in seq_len(nrow(significant_pairs))) {
+
+          r <- significant_pairs[i, ]
+
+          comps <- unlist(strsplit(r$Comparison, " - "))
+
+          g1 <- trimws(comps[1])
+          g2 <- trimws(comps[2])
+
+          cat(g1, " vs ", g2, "\n", sep = "")
+
+          cat(
+            "Z = ",
+            round(r$Z, 3),
+            "\n",
+            sep = ""
+          )
+
+          cat(
+            "p (adj) = ",
+            .format_pval(r$P.adj),
+            "\n\n",
+            sep = ""
+          )
+        }
+      }
+    })
   }
 
-  # Significance letters
-  comparisons <- setNames(
-    dunn_df$P.adj,
-    gsub(" ", "", dunn_df$Comparison)
-  )
-
-  letters_df <- multcompView::multcompLetters(comparisons)$Letters
-  letters_df <- data.frame(
-    group = names(letters_df),
-    letter = unname(letters_df)
-  )
-
-  # Adjust letter positions
-  max_values <- aggregate(value ~ group, data = data, max)
-  letters_df <- merge(max_values, letters_df, by = "group")
-  letters_df$value <- letters_df$value +
-    0.2 * max(letters_df$value, na.rm = TRUE)
-
   # Labels and colors
-  colors <- RColorBrewer::brewer.pal(
-    length(unique(data$group)),
-    "Set1"
-  )
+  vivid_colors <- scales::hue_pal()(length(unique(data$group)))
 
   # --------------------------
   # STYLE 1: Boxplot + jitter
   # --------------------------
-  if (style == 1) {
+  if (style == "boxplot") {
     g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
       ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA) +
       ggplot2::geom_jitter(width = 0.1, alpha = 0.5, color = "black") +
-      ggplot2::geom_text(
-        data = letters_df,
-        ggplot2::aes(x = group, y = value, label = letter),
-        size = 4,
-        vjust = 0
-      ) +
-      ggplot2::labs(title = title, subtitle = p_label, x = "", y = y_label) +
-      ggplot2::scale_fill_manual(values = colors) +
+      ggplot2::labs(title = title, x = "", y = ylab) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::theme(
         legend.position = "none",
@@ -176,11 +266,11 @@ Example:
   # --------------------------
   # STYLE 2: Violin + minimalist boxplot
   # --------------------------
-  if (style == 2) {
+  if (style == "violin") {
     g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
       ggplot2::geom_violin(
         trim = FALSE,
-        alpha = 0.55,
+        alpha = 0.6,
         color = NA,
         adjust = 0.6
       ) +
@@ -196,14 +286,8 @@ Example:
         size = 1.8,
         color = "gray25"
       ) +
-      ggplot2::geom_text(
-        data = letters_df,
-        ggplot2::aes(x = group, y = value, label = letter),
-        size = 4,
-        vjust = 0
-      ) +
-      ggplot2::labs(title = title, subtitle = p_label, x = "", y = y_label) +
-      ggplot2::scale_fill_manual(values = colors) +
+      ggplot2::labs(title = title, x = "", y = ylab) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::theme(
         legend.position = "none",
@@ -214,22 +298,17 @@ Example:
   # --------------------------
   # STYLE 3: Monochrome premium
   # --------------------------
-  if (style == 3) {
+  if (style == "monochrome") {
     g <- ggplot2::ggplot(data, ggplot2::aes(group, value)) +
-      ggplot2::geom_violin(fill = "gray85", color = NA) +
+      ggplot2::geom_violin(alpha = .6, trim = FALSE, adjust = 0.6,
+                           fill = "gray85", color = NA) +
       ggplot2::geom_boxplot(width = 0.18, fill = "white") +
       ggplot2::geom_point(
         position = ggplot2::position_jitter(width = 0.1),
         color = "gray20",
         alpha = 0.4
       ) +
-      ggplot2::geom_text(
-        data = letters_df,
-        ggplot2::aes(x = group, y = value, label = letter),
-        size = 4,
-        vjust = 0
-      ) +
-      ggplot2::labs(title = title, subtitle = p_label, x = "", y = y_label) +
+      ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::theme(
         legend.position = "none",
@@ -240,13 +319,15 @@ Example:
   # --------------------------
   # STYLE 4: Half-eye (ggdist)
   # --------------------------
-  if (style == 4) {
+  if (style == "halfeye") {
     if (!requireNamespace("ggdist", quietly = TRUE)) {
-      stop("Style 4 requires the 'ggdist' package.")
+      stop("Style = 'halfeye' requires the 'ggdist' package.")
     }
 
     g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
       ggdist::stat_halfeye(
+        alpha = .6,
+        trim = FALSE,
         adjust = 0.6,
         width = 0.6,
         .width = c(0.5, 0.8, 0.95),
@@ -266,13 +347,8 @@ Example:
         interval_color = "black",
         .width = 0.95
       ) +
-      ggplot2::geom_text(
-        data = letters_df,
-        ggplot2::aes(x = group, y = value, label = letter),
-        size = 4,
-        vjust = 0
-      ) +
-      ggplot2::labs(title = title, subtitle = p_label, x = "", y = y_label) +
+      ggplot2::labs(title = title, x = "", y = ylab) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::theme(
         legend.position = "none",
@@ -283,8 +359,15 @@ Example:
   print(g)
 
   invisible(list(
-    p_kruskal = p_kruskal,
+    type = "Kruskal-Wallis",
+    H = H,
+    df = k - 1,
+    p = p_kruskal,
+    epsilon_sq = epsilon_sq,
+    epsilon_ci = eps_ci,
+    means_sd = mean_sd,
     dunn = dunn_df,
-    means = mean_sd
+    significant_pairs = significant_pairs,
+    data = data
   ))
 }

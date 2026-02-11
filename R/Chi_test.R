@@ -26,9 +26,16 @@
 #' )
 #' test.chi(data)
 
-test.chi <- function(x, y = NULL, title = "Chi-square Test",
-                     xlab = NULL, ylab = "Proportion", style = 1,
-                     show_table = TRUE, help = FALSE, verbose = TRUE) {
+test.chi <- function(x, y = NULL,
+                     title = "Chi-square Test",
+                     xlab = NULL,
+                     ylab = "Proportion",
+                     style = c("stacked", "barplot", "mosaic", "pie"),
+                     show_table = TRUE,
+                     help = FALSE,
+                     verbose = TRUE) {
+
+  style <- match.arg(style)
 
   # Help
   if (help || missing(x)) {
@@ -140,19 +147,60 @@ Example:
   test <- suppressWarnings(stats::chisq.test(contingency_table))
   expected_freq <- test$expected
 
-  if (verbose && any(expected_freq < 5)) {
-    stop(
-      "Some expected frequencies are < 5. Consider using Fisher's exact test.",
-      call. = FALSE
+  small_exp <- any(expected_freq < 5)
+
+  if (verbose && small_exp) {
+    warning(
+      "Some expected frequencies < 5. Chi-square approximation may be unreliable. ",
+      "Consider Fisher's exact test."
     )
   }
 
+  # -----------------------------
+  # Effect size: Cramér's V
+  # -----------------------------
+
+  v <- .cramers_v(contingency_table)
+  boot_v <- .boot_cramers_v(contingency_table)
+
+  # -----------------------------
+  # Output
+  # -----------------------------
+
   if (verbose) {
-    message("Pearson's Chi-square test result:")
-    message("---------------------------------")
-    message("Chi-square statistic: ", signif(test$statistic, 4))
-    message("Degrees of freedom: ", test$parameter)
-    message("p-value: ", signif(test$p.value, 4))
+
+    .print_header("Chi-square Test")
+
+    .print_block("Statistics", function() {
+
+      cat(
+        "Chi-square = ",
+        round(test$statistic, 3),
+        " | df = ",
+        test$parameter,
+        " | p = ",
+        .format_pval(test$p.value),
+        "\n",
+        sep = ""
+      )
+
+      cat(
+        "Cramer's V = ",
+        round(v, 3),
+        " [",
+        round(boot_v$ci_low, 3), ", ",
+        round(boot_v$ci_high, 3),
+        "]\n",
+        sep = ""
+      )
+
+      if (small_exp) {
+        cat(
+          "Note: Some expected counts < 5 (interpret with caution)\n"
+        )
+      }
+
+    })
   }
 
   # Data preparation for plotting
@@ -164,16 +212,19 @@ Example:
     dplyr::group_by(group) |>
     dplyr::mutate(prop = n / sum(n))
 
+  # Labels and colors
+  vivid_colors <- scales::hue_pal()(length(unique(df_prop$group)))
+
   # --------------------------
   # STYLE 1 (Stacked bar plot)
   # --------------------------
-  if (style == 1) {
+  if (style == "stacked") {
     g <- ggplot2::ggplot(
       df_prop,
       ggplot2::aes(x = group, y = prop, fill = category)
     ) +
       ggplot2::geom_bar(stat = "identity", color = NA) +
-      ggplot2::scale_fill_brewer(palette = "Set1") +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::labs(
         title = title,
         x = "",
@@ -192,7 +243,7 @@ Example:
   # --------------------------
   # STYLE 2 (Side-by-side bars)
   # --------------------------
-  if (style == 2) {
+  if (style == "barplot") {
     g <- ggplot2::ggplot(
       df_prop,
       ggplot2::aes(x = group, y = prop, fill = category)
@@ -201,7 +252,7 @@ Example:
         stat = "identity",
         position = ggplot2::position_dodge(width = 0.8)
       ) +
-      ggplot2::scale_fill_brewer(palette = "Set1") +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::labs(
         title = title,
         x = "",
@@ -220,10 +271,10 @@ Example:
   # --------------------------
   # STYLE 3 (Mosaic plot)
   # --------------------------
-  if (style == 3) {
+  if (style == "mosaic") {
     if (!requireNamespace("vcd", quietly = TRUE)) {
       stop(
-        "Style 3 requires the 'vcd' package. Install it with install.packages('vcd')"
+        "Style = 'mosaic' requires the 'vcd' package. Install it with install.packages('vcd')"
       )
     }
 
@@ -238,7 +289,7 @@ Example:
   # --------------------------
   # STYLE 4 (Pie chart)
   # --------------------------
-  if (style == 4) {
+  if (style == "pie") {
     g <- ggplot2::ggplot(
       df_prop,
       ggplot2::aes(x = "", y = prop, fill = category)
@@ -250,7 +301,7 @@ Example:
       ) +
       ggplot2::coord_polar("y") +
       ggplot2::facet_wrap(~ group) +
-      ggplot2::scale_fill_brewer(palette = "Set1") +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::labs(
         title = title,
         fill = name_y,
@@ -267,7 +318,26 @@ Example:
       )
   }
 
-  if (style != 3) print(g)
+  if (style != "mosaic") print(g)
 
-  invisible(test)
+  # --------------------------
+  # Return
+  # --------------------------
+
+  invisible(list(
+    type = "Chi-square",
+    statistic = as.numeric(test$statistic),
+    df = as.numeric(test$parameter),
+    p = test$p.value,
+    cramers_v = v,
+    cramers_ci = c(
+      boot_v$ci_low,
+      boot_v$ci_high
+    ),
+    expected = expected_freq,
+    table = contingency_table,
+    small_expected = small_exp,
+    data = df_plot
+  ))
 }
+
