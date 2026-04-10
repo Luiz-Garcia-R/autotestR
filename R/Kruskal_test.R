@@ -244,6 +244,24 @@ return(invisible(NULL))
     })
   }
 
+  # Significance letters
+  comparisons <- setNames(
+    dunn_df$P.adj,
+    gsub(" ", "", dunn_df$Comparison)
+  )
+
+  letters_df <- multcompView::multcompLetters(comparisons)$Letters
+  letters_df <- data.frame(
+    group = names(letters_df),
+    letter = unname(letters_df)
+  )
+
+  # Adjust letter positions
+  max_values <- aggregate(value ~ group, data = data, max)
+  letters_df <- merge(max_values, letters_df, by = "group")
+  letters_df$value <- letters_df$value +
+    0.2 * max(letters_df$value, na.rm = TRUE)
+
   # Labels and colors
   vivid_colors <- scales::hue_pal()(length(unique(data$group)))
 
@@ -254,6 +272,12 @@ return(invisible(NULL))
     g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
       ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA) +
       ggplot2::geom_jitter(width = 0.1, alpha = 0.5, color = "black") +
+      ggplot2::geom_text(
+        data = letters_df,
+        ggplot2::aes(x = group, y = value, label = letter),
+        size = 4,
+        vjust = 0
+      ) +
       ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::theme_minimal(base_size = 12) +
@@ -286,6 +310,12 @@ return(invisible(NULL))
         size = 1.8,
         color = "gray25"
       ) +
+      ggplot2::geom_text(
+        data = letters_df,
+        ggplot2::aes(x = group, y = value, label = letter),
+        size = 4,
+        vjust = 0
+      ) +
       ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::theme_minimal(base_size = 12) +
@@ -307,6 +337,12 @@ return(invisible(NULL))
         position = ggplot2::position_jitter(width = 0.1),
         color = "gray20",
         alpha = 0.4
+      ) +
+      ggplot2::geom_text(
+        data = letters_df,
+        ggplot2::aes(x = group, y = value, label = letter),
+        size = 4,
+        vjust = 0
       ) +
       ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::theme_minimal(base_size = 12) +
@@ -346,6 +382,12 @@ return(invisible(NULL))
         point_color = "black",
         interval_color = "black",
         .width = 0.95
+      ) +
+      ggplot2::geom_text(
+        data = letters_df,
+        ggplot2::aes(x = group, y = value, label = letter),
+        size = 4,
+        vjust = 0
       ) +
       ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::scale_fill_manual(values = vivid_colors) +

@@ -128,7 +128,8 @@ Returns:
 
   # Labels
   p_value <- test_result$p.value
-  p_label <- .format_pval(p_value)
+  p_numeric <- signif(p_value, 3)
+  p_label   <- .format_pval(p_value)
 
   summary_table <- data.frame(
     Group = names,
@@ -144,6 +145,197 @@ Returns:
     )
   )
 
+  # ------------------------------
+  # Final data frame
+  # ------------------------------
+  data <- data.frame(
+    id = seq_along(x),
+    group = factor(
+      rep(names, each = length(x)),
+      levels = names
+    ),
+    value = c(x, y)
+  )
+
+  # ============================
+  # Conditional plot generation
+  # ============================
+  signif_label <- if (p_value < 0.001) {
+    "***"
+  } else if (p_value < 0.01) {
+    "**"
+  } else if (p_value < 0.05) {
+    "*"
+  } else {
+    ""
+  }
+
+  y_pos <- max(data$value, na.rm = TRUE) +
+    0.1 * diff(range(data$value, na.rm = TRUE))
+
+  # --- Optional paired-line layer ---
+  lines <- function() {
+    if (!connect) return(NULL)
+    ggplot2::geom_line(
+      data = data,
+      ggplot2::aes(x = group, y = value, group = id),
+      color = "gray40",
+      linewidth = 0.5,
+      alpha = 0.6
+    )
+  }
+
+  vivid_colours <- scales::hue_pal()(length(unique(data$group)))
+  monochrome_colors <- c("white", "grey70")
+
+  # ============================
+  # STYLE 1 (Boxplot + jitter)
+  # ============================
+  if (style == "boxplot") {
+    g <- ggplot2::ggplot(data, ggplot2::aes(group, value, fill = group)) +
+      ggplot2::geom_boxplot(alpha = .7, outlier.shape = NA) +
+      lines() +
+      ggplot2::geom_point(
+        position = ggplot2::position_jitter(width = .1),
+        alpha = .4
+      ) +
+      ggplot2::annotate(
+        "text", x = mean(1:2), y = y_pos,
+        label = signif_label, size = 6,
+        col = "grey25"
+      ) +
+      ggplot2::scale_fill_manual(values = vivid_colours) +
+      ggplot2::scale_y_continuous(
+        expand = ggplot2::expansion(mult = c(0.05, 0.15))
+      ) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::labs(
+        title = title,
+        x = xlab,
+        y = ylab
+      ) +
+      ggplot2::theme(
+        legend.position = "none",
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
+      )
+  }
+
+
+  # ============================
+  # STYLE 2 (Violin)
+  # ============================
+  if (style == "violin") {
+    g <- ggplot2::ggplot(data, ggplot2::aes(group, value, fill = group)) +
+      ggplot2::geom_violin(trim = FALSE, alpha = .4, color = NA, adjust = .6) +
+      ggplot2::geom_boxplot(width = .18, outlier.shape = NA, color = "gray20") +
+      lines() +
+      ggplot2::geom_point(
+        position = ggplot2::position_jitter(width = .1),
+        alpha = .55, size = 1.8, color = "gray25"
+      ) +
+      ggplot2::annotate(
+        "text", x = mean(1:2), y = y_pos,
+        label = signif_label, size = 6,
+        col = "grey25"
+      ) +
+      ggplot2::scale_fill_manual(values = vivid_colours) +
+      ggplot2::scale_y_continuous(
+        expand = ggplot2::expansion(mult = c(0.05, 0.15))
+      ) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::labs(
+        title = title,
+        x = xlab,
+        y = ylab
+      ) +
+      ggplot2::theme(
+        legend.position = "none",
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
+      )
+  }
+
+  # ============================
+  # STYLE 3 (Monochrome premium)
+  # ============================
+  if (style == "monochrome") {
+    g <- ggplot2::ggplot(data, ggplot2::aes(group, value)) +
+      ggplot2::geom_violin(fill = "gray85", color = NA, trim = FALSE, adjust = 0.6) +
+      ggplot2::geom_boxplot(width = .18, fill = "white") +
+      lines() +
+      ggplot2::geom_point(
+        position = ggplot2::position_jitter(width = .1),
+        color = "gray20", alpha = .4
+      ) +
+      ggplot2::annotate(
+        "text", x = mean(1:2), y = y_pos,
+        label = signif_label, size = 6,
+        col = "grey25"
+      ) +
+      ggplot2::scale_y_continuous(
+        expand = ggplot2::expansion(mult = c(0.05, 0.15))
+      ) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::labs(
+        title = title,
+        x = xlab,
+        y = ylab
+      ) +
+      ggplot2::theme(
+        legend.position = "none",
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
+      )
+  }
+
+  # ============================
+  # STYLE 4 (ggdist half-eye + median)
+  # ============================
+  if (style == "halfeye") {
+    if (!requireNamespace("ggdist", quietly = TRUE))
+      stop("Package 'ggdist' is required for style = halfeye'.")
+
+    g <- ggplot2::ggplot(data, ggplot2::aes(group, value, fill = group)) +
+      ggdist::stat_halfeye(alpha = .6, adjust = 0.6, trim = FALSE, .width = 0.95) +
+      lines() +
+      ggplot2::geom_point(
+        position = ggplot2::position_jitter(width = .1),
+        alpha = .4
+      ) +
+      ggplot2::annotate(
+        "text", x = mean(1:2), y = y_pos,
+        label = signif_label, size = 6,
+        col = "grey25"
+      ) +
+      ggplot2::scale_y_continuous(
+        expand = ggplot2::expansion(mult = c(0.05, 0.15))
+      ) +
+      ggplot2::scale_fill_manual(values = vivid_colours) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::labs(
+        title = title,
+        x = xlab,
+        y = ylab
+      ) +
+      ggplot2::theme(
+        legend.position = "none",
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
+      )
+  }
+
+  print(g)
+
+  # ------------------------------
+  # Output
+  # ------------------------------
+  obj <- list(
+    summary_table = summary_table,
+    test = test_result,
+    data = data,
+    plot = g
+  )
+
+  # ------------------------------
+  # Return
+  # ------------------------------
   if (verbose) {
 
     .print_header("Paired t-test")
@@ -174,143 +366,5 @@ Returns:
     })
   }
 
-  # ------------------------------
-  # Final data frame
-  # ------------------------------
-  data <- data.frame(
-    id = seq_along(x),
-    group = factor(
-      rep(names, each = length(x)),
-      levels = names
-    ),
-    value = c(x, y)
-  )
-
-  # ------------------------------
-  # Optional paired-line layer
-  # ------------------------------
-  lines <- function() {
-    if (!connect) return(NULL)
-    ggplot2::geom_line(
-      data = data,
-      ggplot2::aes(x = group, y = value, group = id),
-      color = "gray40",
-      linewidth = 0.5,
-      alpha = 0.6
-    )
-  }
-
-  vivid_colours <- scales::hue_pal()(length(unique(data$group)))
-
-  # ------------------------------
-  # Plot styles
-  # ------------------------------
-
-  # ---- STYLE 1 ------------------------------------------------
-  if (style == "boxplot") {
-    g <- ggplot2::ggplot(data, ggplot2::aes(group, value, fill = group)) +
-      ggplot2::geom_boxplot(alpha = .7, outlier.shape = NA) +
-      lines() +
-      ggplot2::geom_point(
-        position = ggplot2::position_jitter(width = .1),
-        alpha = .4
-      ) +
-      ggplot2::scale_fill_manual(values = vivid_colours) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::labs(
-        title = title,
-        x = xlab,
-        y = ylab
-      ) +
-      ggplot2::theme(
-        legend.position = "none",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
-      )
-  }
-
-  # ---- STYLE 2 ------------------------------------------------
-  if (style == "violin") {
-    g <- ggplot2::ggplot(data, ggplot2::aes(group, value, fill = group)) +
-      ggplot2::geom_violin(trim = FALSE, alpha = .4, color = NA, adjust = .6) +
-      ggplot2::geom_boxplot(width = .18, outlier.shape = NA, color = "gray20") +
-      lines() +
-      ggplot2::geom_point(
-        position = ggplot2::position_jitter(width = .1),
-        alpha = .55, size = 1.8, color = "gray25"
-      ) +
-      ggplot2::scale_fill_manual(values = vivid_colours) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::labs(
-        title = title,
-        x = xlab,
-        y = ylab
-      ) +
-      ggplot2::theme(
-        legend.position = "none",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
-      )
-  }
-
-  # ---- STYLE 3 ------------------------------------------------
-  if (style == "monochrome") {
-    g <- ggplot2::ggplot(data, ggplot2::aes(group, value)) +
-      ggplot2::geom_violin(fill = "gray85", color = NA, trim = FALSE, adjust = 0.6) +
-      ggplot2::geom_boxplot(width = .18, fill = "white") +
-      lines() +
-      ggplot2::geom_point(
-        position = ggplot2::position_jitter(width = .1),
-        color = "gray20", alpha = .4
-      ) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::labs(
-        title = title,
-        x = xlab,
-        y = ylab
-      ) +
-      ggplot2::theme(
-        legend.position = "none",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
-      )
-  }
-
-  # ---- STYLE 4 (ggdist) ---------------------------------------
-  if (style == "halfeye") {
-    if (!requireNamespace("ggdist", quietly = TRUE))
-      stop("Package 'ggdist' is required for style = halfeye'.")
-
-    g <- ggplot2::ggplot(data, ggplot2::aes(group, value, fill = group)) +
-      ggdist::stat_halfeye(alpha = .6, adjust = 0.6, trim = FALSE, .width = 0.95) +
-      lines() +
-      ggplot2::geom_point(
-        position = ggplot2::position_jitter(width = .1),
-        alpha = .4
-      ) +
-      ggplot2::scale_y_continuous(
-        expand = ggplot2::expansion(mult = c(0.05, 0.1))
-      ) +
-      ggplot2::scale_fill_manual(values = vivid_colours) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::labs(
-        title = title,
-        x = xlab,
-        y = ylab
-      ) +
-      ggplot2::theme(
-        legend.position = "none",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
-      )
-  }
-
-  print(g)
-
-  # ------------------------------
-  # Return
-  # ------------------------------
-
-  invisible(list(
-    summary_table = summary_table,
-    test = test_result,
-    data = data,
-    plot = g
-  ))
+  return(invisible(list(result = obj)))
 }

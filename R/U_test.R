@@ -97,7 +97,7 @@ Examples:
   # ============================
   # Package checking
   # ============================
-  required_packages <- c("ggplot2", "dplyr", "scales")
+  required_packages <- c("ggplot2", "dplyr", "scales", "ggdist")
 
   for (pkg in required_packages) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
@@ -169,58 +169,39 @@ Examples:
   ci_low  <- res_boot$ci_low
   ci_high <- res_boot$ci_high
 
-  # ============================
-  # Statistical summary
-  # ============================
-  summary_table <- data_long |>
-    dplyr::group_by(group) |>
-    dplyr::summarise(
-      Median = round(stats::median(value, na.rm = TRUE), 2),
-      Mean   = round(mean(value, na.rm = TRUE), 2),
-      SD     = round(stats::sd(value, na.rm = TRUE), 2),
-      .groups = "drop"
-    )
+  # --- Conditional plot generation ---
+  p_label <- signif(p_value, 3)
 
-  if (verbose) {
-
-    .print_header("Mann-Whitney U Test")
-
-    .print_block("Summary", function() {
-      print(summary_table, row.names = FALSE)
-    })
-
-    .print_block("Statistics", function() {
-
-      cat("W statistic = ", round(test_result$statistic, 3),
-          " | p = ", p_label, "\n", sep = "")
-
-      cat("Rank-biserial correlation (r) = ",
-          round(r_rb, 3), "\n", sep = "")
-
-      cat("Median difference = ",
-          round(median_diff, 2),
-          " [",
-          round(ci_low, 2), ", ",
-          round(ci_high, 2),
-          "]\n", sep = "")
-    })
+  signif_label <- if (p_value < 0.001) {
+    "***"
+  } else if (p_value < 0.01) {
+    "**"
+  } else if (p_value < 0.05) {
+    "*"
+  } else {
+    ""
   }
 
-  colors_vivid <- scales::hue_pal()(length(unique(data_long$group)))
+  y_pos <- max(values, na.rm = TRUE) +
+    0.1 * diff(range(values, na.rm = TRUE))
+
+  vivid_colors <- scales::hue_pal()(length(unique(data_long$group)))
+  monochrome_colors <- c("white", "grey70")
 
   # ============================
   # STYLE 1 — Boxplot + jitter
   # ============================
   if (style == "boxplot") {
-
-    g <- ggplot2::ggplot(
-      data_long,
-      ggplot2::aes(x = group, y = value, fill = group)
-    ) +
-      ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA) +
-      ggplot2::geom_jitter(width = 0.1, alpha = 0.4, color = "black") +
-      ggplot2::scale_fill_manual(values = colors_vivid) +
+    g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggplot2::geom_boxplot(alpha = 0.75, outlier.shape = NA, width = 0.60) +
+      ggplot2::geom_jitter(width = 0.08, alpha = 0.35, color = "grey35", size = 1.4) +
+      ggplot2::annotate(
+        "text", x = mean(1:2), y = y_pos,
+        label = signif_label, size = 6,
+        col = "grey25"
+      ) +
       ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::labs(
         title = title,
         x = "",
@@ -228,6 +209,7 @@ Examples:
       ) +
       ggplot2::theme(
         legend.position = "none",
+        plot.margin = ggplot2::margin(5.5, 5.5, 10, 5.5),
         axis.text.x = ggplot2::element_text(
           angle = 45, hjust = 1, size = 12
         )
@@ -238,30 +220,25 @@ Examples:
   # STYLE 2 — Violin
   # ============================
   if (style == "violin") {
-
-    g <- ggplot2::ggplot(
-      data_long,
-      ggplot2::aes(x = group, y = value, fill = group)
-    ) +
+    g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
       ggplot2::geom_violin(
-        trim = FALSE,
-        alpha = 0.55,
-        color = NA,
-        adjust = 0.6
+        trim = FALSE, alpha = .6,
+        color = NA, adjust = .6
       ) +
       ggplot2::geom_boxplot(
-        width = 0.18,
-        outlier.shape = NA,
-        color = "gray20",
-        linewidth = 0.4
+        width = .18, outlier.shape = NA,
+        color = "gray20", linewidth = .4
+      ) +
+      ggplot2::annotate(
+        "text", x = mean(1:2), y = y_pos,
+        label = signif_label, size = 6,
+        col = "grey25"
       ) +
       ggplot2::geom_point(
-        position = ggplot2::position_jitter(width = 0.1),
-        alpha = 0.4,
-        size = 1.8,
-        color = "gray25"
+        position = ggplot2::position_jitter(width = .1),
+        alpha = .4, size = 1.4, color = "gray35"
       ) +
-      ggplot2::scale_fill_manual(values = colors_vivid) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
         title = title,
@@ -280,24 +257,16 @@ Examples:
   # STYLE 3 — Monochrome
   # ============================
   if (style == "monochrome") {
-
-    g <- ggplot2::ggplot(
-      data_long,
-      ggplot2::aes(x = group, y = value)
-    ) +
-      ggplot2::geom_violin(
-        trim = FALSE,
-        adjust = 0.6,
-        fill = "gray85",
-        color = NA
-      ) +
-      ggplot2::geom_boxplot(width = 0.18, fill = "white") +
-      ggplot2::geom_point(
-        position = ggplot2::position_jitter(width = 0.1),
-        color = "gray20",
-        alpha = 0.4
+    g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggplot2::geom_boxplot(alpha = 0.75, outlier.shape = NA, width = 0.60, box.linewidth = 0.8, color = "grey20") +
+      ggplot2::geom_jitter(width = 0.08, alpha = 0.35, color = "grey35", size = 1.4) +
+      ggplot2::annotate(
+        "text", x = mean(1:2), y = y_pos,
+        label = signif_label, size = 6,
+        col = "grey25"
       ) +
       ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::scale_fill_manual(values = monochrome_colors) +
       ggplot2::labs(
         title = title,
         x = "",
@@ -305,6 +274,7 @@ Examples:
       ) +
       ggplot2::theme(
         legend.position = "none",
+        plot.margin = ggplot2::margin(5.5, 5.5, 10, 5.5),
         axis.text.x = ggplot2::element_text(
           angle = 45, hjust = 1, size = 12
         )
@@ -315,18 +285,13 @@ Examples:
   # STYLE 4 — ggdist half-eye
   # ============================
   if (style == "halfeye") {
-
-    if (!requireNamespace("ggdist", quietly = TRUE)) {
-      stop("Package 'ggdist' is required for style = 'halfeye'.")
-    }
-
     g <- ggplot2::ggplot(
       data_long,
       ggplot2::aes(x = group, y = value, fill = group)
     ) +
       ggdist::stat_halfeye(
-        trim = FALSE,
         alpha = 0.6,
+        trim = FALSE,
         adjust = 0.6,
         width = 0.6,
         .width = c(0.5, 0.8, 0.95),
@@ -334,11 +299,14 @@ Examples:
         slab_color = "gray20",
         interval_color = "gray20"
       ) +
+      ggplot2::annotate(
+        "text", x = mean(1:2), y = y_pos,
+        label = signif_label, size = 6,
+        col = "grey25"
+      ) +
       ggplot2::geom_point(
         position = ggplot2::position_nudge(x = 0.15),
-        size = 1.1,
-        alpha = 0.4,
-        color = "black"
+        size = 1.1, alpha = 0.4, color = "black"
       ) +
       ggdist::stat_pointinterval(
         position = ggplot2::position_nudge(x = 0.2),
@@ -346,8 +314,8 @@ Examples:
         interval_color = "black",
         .width = 0.95
       ) +
-      ggplot2::scale_fill_manual(values = colors_vivid) +
       ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::labs(
         title = title,
         x = "",
@@ -364,13 +332,44 @@ Examples:
   print(g)
 
   # ============================
+  # Output
+  # ============================
+  summary_table <- data_long |>
+    dplyr::group_by(group) |>
+    dplyr::summarise(
+      Median = round(stats::median(value, na.rm = TRUE), 2),
+      Mean   = round(mean(value, na.rm = TRUE), 2),
+      SD     = round(stats::sd(value, na.rm = TRUE), 2),
+      .groups = "drop"
+    )
+
+  obj <- list(
+    summary = summary_table,
+    test    = test_result,
+    plot    = g
+  )
+
+  # ============================
   # Return
   # ============================
-  invisible(
-    list(
-      summary = summary_table,
-      test    = test_result,
-      plot    = g
-    )
-  )
+  if (verbose) {
+
+    .print_header("Mann-Whitney U Test")
+
+    .print_block("Summary", function() {
+      print(summary_table, row.names = FALSE)
+    })
+
+    .print_block("Statistics", function() {
+
+      cat("W statistic:          ", round(test_result$statistic, 3), "\n", sep = "")
+      cat("p-value:              ", p_label, "\n", sep = "")
+      cat("Median difference:    ", round(median_diff, 2),
+          " [", round(ci_low, 2), ", ", round(ci_high, 2), "]\n", sep = "")
+      cat("Rank-biserial r:      ", round(r_rb, 3), "\n", sep = "")
+
+    })
+  }
+
+  return(invisible(list(result = obj)))
 }

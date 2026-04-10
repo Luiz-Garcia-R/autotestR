@@ -37,7 +37,9 @@ test.t <- function(...,
   args <- list(...)
   style <- match.arg(style)
 
-  # --- Quick help ---
+  # ============================
+  # Quick help
+  # ============================
   if (help) {
     if (verbose) {
       message("
@@ -67,7 +69,9 @@ Example:
     return(invisible(NULL))
   }
 
-  # --- Detect data frame input ---
+  # ============================
+  # Detect data frame input
+  # ============================
   if (length(args) == 1 && is.data.frame(args[[1]])) {
     df <- args[[1]]
     if (ncol(df) != 2) {
@@ -83,7 +87,9 @@ Example:
     group_names <- sapply(substitute(list(...))[-1], deparse)
   }
 
-  # --- Validation ---
+  # ============================
+  # Validation
+  # ============================
   if (!all(sapply(groups, is.numeric))) {
     stop("Both groups must be numeric.")
   }
@@ -91,7 +97,9 @@ Example:
     stop("One of the groups has zero variance (constant values).")
   }
 
-  # --- Required packages ---
+  # ============================
+  # Required packages
+  # ============================
   required_packages <- c("ggplot2", "dplyr", "car", "ggdist")
   for (pkg in required_packages) {
     if (!requireNamespace(pkg, quietly = TRUE)) {
@@ -104,7 +112,9 @@ Example:
     }
   }
 
-  # --- Build long-format data frame ---
+  # ============================
+  # Build long-format data frame
+  # ============================
   values <- unlist(groups)
   group <- factor(
     rep(group_names, times = sapply(groups, length)),
@@ -112,14 +122,18 @@ Example:
   )
   data <- data.frame(value = values, group = group)
 
-  # --- Normality test (Shapiro-Wilk) ---
+  # ============================
+  # Normality test (Shapiro-Wilk)
+  # ============================
   normality <- sapply(groups, function(g) {
     if (length(g) < 3) return(NA)
     stats::shapiro.test(g[!is.na(g)])$p.value
   })
   is_normal <- all(normality > 0.05, na.rm = TRUE)
 
-  # --- Homogeneity test (Levene) ---
+  # ============================
+  # Homogeneity test (Levene)
+  # ============================
   homogeneity <- tryCatch(
     car::leveneTest(value ~ group, data = data, na.action = na.omit),
     error = function(e) data.frame(`Pr(>F)` = NA)
@@ -133,8 +147,9 @@ Example:
 
   assumption_warning <- violated_normality || violated_homogeneity
 
-
-  # --- Student t-test (always) ---
+  # ============================
+  # Student t-test
+  # ============================
   test_result <- stats::t.test(groups[[1]], groups[[2]])
 
   method <- "Student's t-test"
@@ -145,7 +160,9 @@ Example:
   p_value <- test_result$p.value
   p_label <- .format_pval(p_value)
 
-  # --- Effect size: Cohen's d ---
+  # ============================
+  # Effect size: Cohen's d
+  # ============================
   x <- groups[[1]]
   y <- groups[[2]]
 
@@ -162,7 +179,9 @@ Example:
 
   cohen_d <- mean_diff / sd_pooled
 
-  # --- Descriptive summary ---
+  # ============================
+  # Descriptive summary
+  # ============================
   summary_table <- data |>
     dplyr::group_by(group) |>
     dplyr::summarise(
@@ -170,11 +189,6 @@ Example:
       SD = round(sd(value, na.rm = TRUE), 2),
       .groups = "drop"
     )
-
-  if (verbose) {
-    message("\nDescriptive summary by group:")
-    print(summary_table)
-  }
 
   if (verbose && assumption_warning) {
 
@@ -193,49 +207,39 @@ Example:
     })
   }
 
-  # --- Conditional plot generation ---
+  # ============================
+  # Conditional plot generation
+  # ============================
+    p_label <- signif(p_value, 3)
 
-  if (verbose) {
+    signif_label <- if (p_value < 0.001) {
+      "***"
+    } else if (p_value < 0.01) {
+      "**"
+    } else if (p_value < 0.05) {
+      "*"
+    } else {
+      ""
+    }
 
-    .print_header(method)
-
-    .print_block("Summary", function() {
-      print(summary_table, row.names = FALSE)
-    })
-
-    .print_block("Statistics", function() {
-
-      cat("t statistic = ",
-          round(test_result$statistic, 3),
-          " | df = ",
-          round(test_result$parameter, 1),
-          " | p = ",
-          p_label,
-          "\n", sep = "")
-
-      cat("Mean difference = ",
-          round(mean_diff, 2),
-          " [",
-          round(ci_low, 2), ", ",
-          round(ci_high, 2),
-          "]\n", sep = "")
-
-      cat("Cohen's d = ",
-          round(cohen_d, 3),
-          "\n", sep = "")
-
-    })
-  }
+    y_pos <- max(values, na.rm = TRUE) +
+      0.1 * diff(range(values, na.rm = TRUE))
 
   vivid_colors <- scales::hue_pal()(length(unique(data$group)))
+  monochrome_colors <- c("white", "grey70")
 
-    # --------------------------
-    # STYLE 1 (Boxplot + jitter)
-    # --------------------------
+  # ============================
+  # STYLE 1 (Boxplot + jitter)
+  # ============================
     if (style == "boxplot") {
       g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
-        ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA) +
-        ggplot2::geom_jitter(width = 0.1, alpha = 0.4, color = "black") +
+        ggplot2::geom_boxplot(alpha = 0.75, outlier.shape = NA, width = 0.60) +
+        ggplot2::geom_jitter(width = 0.08, alpha = 0.35, color = "grey35", size = 1.4) +
+        ggplot2::annotate(
+          "text", x = mean(1:2), y = y_pos,
+          label = signif_label, size = 6,
+          col = "grey25"
+        ) +
         ggplot2::theme_minimal(base_size = 12) +
         ggplot2::scale_fill_manual(values = vivid_colors) +
         ggplot2::labs(
@@ -245,15 +249,16 @@ Example:
         ) +
         ggplot2::theme(
           legend.position = "none",
+          plot.margin = ggplot2::margin(5.5, 5.5, 10, 5.5),
           axis.text.x = ggplot2::element_text(
             angle = 45, hjust = 1, size = 12
           )
         )
     }
 
-    # --------------------------
-    # STYLE 2 (Clean violin + minimal boxplot)
-    # --------------------------
+  # ============================
+  # STYLE 2 (Clean violin + minimal boxplot)
+  # ============================
     if (style == "violin") {
       g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
         ggplot2::geom_violin(
@@ -264,9 +269,14 @@ Example:
           width = .18, outlier.shape = NA,
           color = "gray20", linewidth = .4
         ) +
+        ggplot2::annotate(
+          "text", x = mean(1:2), y = y_pos,
+          label = signif_label, size = 6,
+          col = "grey25"
+        ) +
         ggplot2::geom_point(
           position = ggplot2::position_jitter(width = .1),
-          alpha = .4, size = 1.8, color = "gray25"
+          alpha = .4, size = 1.4, color = "gray35"
         ) +
         ggplot2::scale_fill_manual(values = vivid_colors) +
         ggplot2::theme_minimal(base_size = 12) +
@@ -283,34 +293,37 @@ Example:
         )
     }
 
-    # --------------------------
-    # STYLE 3 (Premium monochrome)
-    # --------------------------
-    if (style == "monochrome") {
-      g <- ggplot2::ggplot(data, ggplot2::aes(group, value)) +
-        ggplot2::geom_violin(alpha = .6, trim = FALSE, fill = "gray85", color = NA) +
-        ggplot2::geom_boxplot(width = .18, fill = "white") +
-        ggplot2::geom_point(
-          position = ggplot2::position_jitter(width = .1),
-          color = "gray20", alpha = .4
-        ) +
-        ggplot2::theme_minimal(base_size = 12) +
-        ggplot2::labs(
-          title = if (title) title_text else NULL,
-          x = "",
-          y = ylab
-        ) +
-        ggplot2::theme(
-          legend.position = "none",
-          axis.text.x = ggplot2::element_text(
-            angle = 45, hjust = 1, size = 12
-          )
+  # ============================
+  # STYLE 3 (Premium monochrome)
+  # ============================
+  if (style == "monochrome") {
+    g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggplot2::geom_boxplot(alpha = 0.75, outlier.shape = NA, width = 0.60, box.linewidth = 0.8, color = "grey20") +
+      ggplot2::geom_jitter(width = 0.08, alpha = 0.35, color = "grey35", size = 1.4) +
+      ggplot2::annotate(
+        "text", x = mean(1:2), y = y_pos,
+        label = signif_label, size = 6,
+        col = "grey25"
+      ) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::scale_fill_manual(values = monochrome_colors) +
+      ggplot2::labs(
+        title = if (title) title_text else NULL,
+        x = "",
+        y = ylab
+      ) +
+      ggplot2::theme(
+        legend.position = "none",
+        plot.margin = ggplot2::margin(5.5, 5.5, 10, 5.5),
+        axis.text.x = ggplot2::element_text(
+          angle = 45, hjust = 1, size = 12
         )
-    }
+      )
+  }
 
-    # --------------------------
-    # STYLE 4 (ggdist half-eye + median)
-    # --------------------------
+  # ============================
+  # STYLE 4 (ggdist half-eye + median)
+  # ============================
     if (style == "halfeye") {
       g <- ggplot2::ggplot(
         data,
@@ -325,6 +338,11 @@ Example:
           justification = -0.2,
           slab_color = "gray20",
           interval_color = "gray20"
+        ) +
+        ggplot2::annotate(
+          "text", x = mean(1:2), y = y_pos,
+          label = signif_label, size = 6,
+          col = "grey25"
         ) +
         ggplot2::geom_point(
           position = ggplot2::position_nudge(x = 0.15),
@@ -353,14 +371,40 @@ Example:
 
     print(g)
 
-    # --- Return ---
-
-  invisible(list(
+  # ============================
+  # Output
+  # ============================
+  obj <- list(
     summary = summary_table,
     result = test_result,
     method = method,
     normality = normality,
     homogeneity = homogeneity,
     plot = g
-  ))
+  )
+
+  # ============================
+  # Return
+  # ============================
+  if (verbose) {
+
+    .print_header(method)
+
+    .print_block("Summary", function() {
+      print(summary_table, row.names = FALSE)
+    })
+
+    .print_block("Statistics", function() {
+
+      cat("t statistic:          ", round(test_result$statistic, 3), "\n",
+          "Degrees of freedon:   ", round(test_result$parameter, 1), "\n",
+          "p-value:              ", p_label, "\n", sep = "")
+      cat("Mean difference:      ", round(mean_diff, 2), " [", round(ci_low, 2), ", ", round(ci_high, 2), "]\n", sep = "")
+      cat("Cohen's d:            ", round(cohen_d, 3), "\n", sep = "")
+
+    })
+  }
+
+  return(invisible(list(result = obj)))
+
 }
