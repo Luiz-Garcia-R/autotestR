@@ -23,7 +23,7 @@ You can install the development version of autotestR directly from GitHub:
 install.packages("devtools")
 
 # Install autotestR from GitHub
-devtools::install_github("https://github.com/Luiz-Garcia-R/autotestR.git")
+devtools::install_github("Luiz-Garcia-R/autotestR")
 ```
 
 
