@@ -30,7 +30,7 @@ test.t <- function(...,
                    title_text = "t-test" ,
                    xlab = "Group",
                    ylab = "Value",
-                   style = c("boxplot", "violin", "monochrome", "halfeye"),
+                   style = c("boxplot", "violin", "mono", "halfeye"),
                    help = FALSE,
                    verbose = TRUE) {
 
@@ -208,7 +208,7 @@ Example:
   }
 
   # ============================
-  # Conditional plot generation
+  # Labels and colors
   # ============================
     p_label <- signif(p_value, 3)
 
@@ -225,16 +225,16 @@ Example:
     y_pos <- max(values, na.rm = TRUE) +
       0.1 * diff(range(values, na.rm = TRUE))
 
-  vivid_colors <- scales::hue_pal()(length(unique(data$group)))
-  monochrome_colors <- c("white", "grey70")
+    vivid_colors <- scales::hue_pal()(length(unique(data$group)))
+    mono_colors <- c("grey75", "grey25")
 
   # ============================
   # STYLE 1 (Boxplot + jitter)
   # ============================
     if (style == "boxplot") {
       g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
-        ggplot2::geom_boxplot(alpha = 0.75, outlier.shape = NA, width = 0.60) +
-        ggplot2::geom_jitter(width = 0.08, alpha = 0.35, color = "grey35", size = 1.4) +
+        ggplot2::geom_boxplot(alpha = 0.75, outlier.shape = NA, width = 0.7, linewidth = 0.7) +
+        ggplot2::geom_jitter(width = 0.1, alpha = 0.2, color = "grey25", size = 1.8) +
         ggplot2::annotate(
           "text", x = mean(1:2), y = y_pos,
           label = signif_label, size = 6,
@@ -257,7 +257,7 @@ Example:
     }
 
   # ============================
-  # STYLE 2 (Clean violin + minimal boxplot)
+  # STYLE 2 (Clean violin)
   # ============================
     if (style == "violin") {
       g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
@@ -276,7 +276,7 @@ Example:
         ) +
         ggplot2::geom_point(
           position = ggplot2::position_jitter(width = .1),
-          alpha = .4, size = 1.4, color = "gray35"
+          alpha = .2, size = 1.8, color = "gray25"
         ) +
         ggplot2::scale_fill_manual(values = vivid_colors) +
         ggplot2::theme_minimal(base_size = 12) +
@@ -296,17 +296,17 @@ Example:
   # ============================
   # STYLE 3 (Premium monochrome)
   # ============================
-  if (style == "monochrome") {
+  if (style == "mono") {
     g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggplot2::geom_boxplot(alpha = 0.75, outlier.shape = NA, width = 0.60, box.linewidth = 0.8, color = "grey20") +
-      ggplot2::geom_jitter(width = 0.08, alpha = 0.35, color = "grey35", size = 1.4) +
+      ggplot2::geom_boxplot(alpha = 0.75, outlier.shape = NA, width = 0.7, linewidth = 0.7) +
+      ggplot2::geom_jitter(width = 0.1, alpha = 0.2, color = "grey25", size = 1.8) +
       ggplot2::annotate(
         "text", x = mean(1:2), y = y_pos,
         label = signif_label, size = 6,
         col = "grey25"
       ) +
       ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::scale_fill_manual(values = monochrome_colors) +
+      ggplot2::scale_fill_manual(values = mono_colors) +
       ggplot2::labs(
         title = if (title) title_text else NULL,
         x = "",
@@ -325,6 +325,10 @@ Example:
   # STYLE 4 (ggdist half-eye + median)
   # ============================
     if (style == "halfeye") {
+
+      if (!requireNamespace("ggdist", quietly = TRUE))
+        stop("Package 'ggdist' is required for style = halfeye'.")
+
       g <- ggplot2::ggplot(
         data,
         ggplot2::aes(x = group, y = value, fill = group)

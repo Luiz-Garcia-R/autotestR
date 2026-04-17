@@ -10,7 +10,7 @@ test.t(
   title_text = "t-test",
   xlab = "Group",
   ylab = "Value",
-  style = c("boxplot", "violin", "monochrome", "halfeye"),
+  style = c("boxplot", "violin", "mono", "halfeye"),
   help = FALSE,
   verbose = TRUE
 )

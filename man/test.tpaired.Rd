@@ -9,7 +9,7 @@ test.tpaired(
   title = "Paired t-test",
   xlab = "",
   ylab = "Value",
-  style = c("boxplot", "violin", "monochrome", "halfeye"),
+  style = c("boxplot", "violin", "mono", "halfeye"),
   connect = TRUE,
   help = FALSE,
   verbose = TRUE
@@ -29,7 +29,7 @@ a data frame with exactly two numeric columns.}
 \itemize{
 \item \code{1} Premium boxplot
 \item \code{2} Violin + minimal boxplot
-\item \code{3} Monochrome
+\item \code{3} mono
 \item \code{4} Half-eye (ggdist)
 }}
 
@@ -51,7 +51,7 @@ An invisible list containing:
 \description{
 Performs a paired t-test between two numeric vectors (e.g., before vs after)
 or between two numeric columns of a data frame.
-Includes four visualization styles (boxplot, violin, monochrome, and half-eye).
+Includes four visualization styles (boxplot, violin, mono, and half-eye).
 }
 \examples{
 before <- c(13, 12, 15, 14)

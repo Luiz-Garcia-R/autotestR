@@ -2,7 +2,7 @@
 #'
 #' Performs a paired t-test between two numeric vectors (e.g., before vs after)
 #' or between two numeric columns of a data frame.
-#' Includes four visualization styles (boxplot, violin, monochrome, and half-eye).
+#' Includes four visualization styles (boxplot, violin, mono, and half-eye).
 #'
 #' @param ... Two numeric vectors of equal length, or
 #'   a data frame with exactly two numeric columns.
@@ -13,7 +13,7 @@
 #'   \itemize{
 #'     \item \code{1} Premium boxplot
 #'     \item \code{2} Violin + minimal boxplot
-#'     \item \code{3} Monochrome
+#'     \item \code{3} mono
 #'     \item \code{4} Half-eye (ggdist)
 #'   }
 #' @param connect Logical. If TRUE, connects paired observations.
@@ -41,7 +41,7 @@ test.tpaired <- function(
     title = "Paired t-test",
     xlab = "",
     ylab = "Value",
-    style = c("boxplot", "violin", "monochrome", "halfeye"),
+    style = c("boxplot", "violin", "mono", "halfeye"),
     connect = TRUE,
     help = FALSE,
     verbose = TRUE
@@ -158,7 +158,7 @@ Returns:
   )
 
   # ============================
-  # Conditional plot generation
+  # Labels and colors
   # ============================
   signif_label <- if (p_value < 0.001) {
     "***"
@@ -181,23 +181,25 @@ Returns:
       ggplot2::aes(x = group, y = value, group = id),
       color = "gray40",
       linewidth = 0.5,
-      alpha = 0.6
+      alpha = 0.4
     )
   }
 
   vivid_colours <- scales::hue_pal()(length(unique(data$group)))
-  monochrome_colors <- c("white", "grey70")
+  mono_colors <- c("grey75", "grey25")
 
   # ============================
   # STYLE 1 (Boxplot + jitter)
   # ============================
   if (style == "boxplot") {
     g <- ggplot2::ggplot(data, ggplot2::aes(group, value, fill = group)) +
-      ggplot2::geom_boxplot(alpha = .7, outlier.shape = NA) +
+      ggplot2::geom_boxplot(alpha = .7, outlier.shape = NA, width = 0.7, linewidth = 0.7) +
       lines() +
       ggplot2::geom_point(
         position = ggplot2::position_jitter(width = .1),
-        alpha = .4
+        alpha = .2,
+        size = 1.8,
+        color = "grey25"
       ) +
       ggplot2::annotate(
         "text", x = mean(1:2), y = y_pos,
@@ -219,19 +221,18 @@ Returns:
         axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
       )
   }
-
 
   # ============================
   # STYLE 2 (Violin)
   # ============================
   if (style == "violin") {
     g <- ggplot2::ggplot(data, ggplot2::aes(group, value, fill = group)) +
-      ggplot2::geom_violin(trim = FALSE, alpha = .4, color = NA, adjust = .6) +
+      ggplot2::geom_violin(trim = FALSE, alpha = .6, color = NA, adjust = .6) +
       ggplot2::geom_boxplot(width = .18, outlier.shape = NA, color = "gray20") +
       lines() +
       ggplot2::geom_point(
         position = ggplot2::position_jitter(width = .1),
-        alpha = .55, size = 1.8, color = "gray25"
+        alpha = .2, size = 1.8, color = "gray25"
       ) +
       ggplot2::annotate(
         "text", x = mean(1:2), y = y_pos,
@@ -255,34 +256,31 @@ Returns:
   }
 
   # ============================
-  # STYLE 3 (Monochrome premium)
+  # STYLE 3 (monochrome premium)
   # ============================
-  if (style == "monochrome") {
-    g <- ggplot2::ggplot(data, ggplot2::aes(group, value)) +
-      ggplot2::geom_violin(fill = "gray85", color = NA, trim = FALSE, adjust = 0.6) +
-      ggplot2::geom_boxplot(width = .18, fill = "white") +
+  if (style == "mono") {
+    g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggplot2::geom_boxplot(alpha = 0.75, outlier.shape = NA, width = 0.7, linewidth = 0.7) +
       lines() +
-      ggplot2::geom_point(
-        position = ggplot2::position_jitter(width = .1),
-        color = "gray20", alpha = .4
-      ) +
+      ggplot2::geom_jitter(width = 0.1, alpha = 0.2, color = "grey25", size = 1.8) +
       ggplot2::annotate(
         "text", x = mean(1:2), y = y_pos,
         label = signif_label, size = 6,
         col = "grey25"
       ) +
-      ggplot2::scale_y_continuous(
-        expand = ggplot2::expansion(mult = c(0.05, 0.15))
-      ) +
       ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::scale_fill_manual(values = mono_colors) +
       ggplot2::labs(
         title = title,
-        x = xlab,
+        x = "",
         y = ylab
       ) +
       ggplot2::theme(
         legend.position = "none",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
+        plot.margin = ggplot2::margin(5.5, 5.5, 10, 5.5),
+        axis.text.x = ggplot2::element_text(
+          angle = 45, hjust = 1, size = 12
+        )
       )
   }
 

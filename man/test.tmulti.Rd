@@ -10,7 +10,7 @@ test.tmulti(
   title = "Multiple comparisons (t / MW)",
   xlab = "",
   ylab = "Value",
-  style = c("boxplot", "violin", "monochrome", "halfeye"),
+  style = c("boxplot", "violin", "mono", "halfeye"),
   p_adjust = c("none", "holm", "BH", "bonferroni"),
   help = FALSE,
   verbose = TRUE
@@ -30,7 +30,7 @@ If NULL, all pairwise combinations are used.}
 \item{ylab}{Y-axis label.}
 
 \item{style}{Plot style. One of "boxplot", "violin",
-"monochrome", or "halfeye".}
+"mono", or "halfeye".}
 
 \item{p_adjust}{Method for multiple testing correction.
 One of "none", "holm", "BH", "bonferroni".}

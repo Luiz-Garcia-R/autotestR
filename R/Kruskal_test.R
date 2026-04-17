@@ -13,7 +13,7 @@
 #' @param xlab Character. X-axis label.
 #' @param ylab Character. Y-axis label.
 #' @param style Character. Plot style. One of:
-#'   \code{"boxplot"}, \code{"violin"}, \code{"monochrome"}, or \code{"halfeye"}.
+#'   \code{"boxplot"}, \code{"violin"}, \code{"mono"}, or \code{"halfeye"}.
 #' @param adjust Character. Method for p-value adjustment in Dunn's test.
 #'   One of \code{"bonferroni"}, \code{"holm"}, or \code{"BH"}.
 #' @param help Logical. If \code{TRUE}, displays a short help message and exits.
@@ -53,7 +53,7 @@ test.kruskal <- function(...,
                          title = "Kruskal-Wallis + Dunn",
                          xlab = "Group",
                          ylab = "Value",
-                         style = c("boxplot", "violin", "monochrome", "halfeye"),
+                         style = c("boxplot", "violin", "mono", "halfeye"),
                          adjust = c("bonferroni", "holm", "BH"),
                          help = FALSE,
                          verbose = TRUE) {
@@ -244,40 +244,58 @@ return(invisible(NULL))
     })
   }
 
-  # Significance letters
-  comparisons <- setNames(
-    dunn_df$P.adj,
-    gsub(" ", "", dunn_df$Comparison)
-  )
+  # --------------------------
+  # Labels position
+  # --------------------------
+  sig_pairs <- significant_pairs
 
-  letters_df <- multcompView::multcompLetters(comparisons)$Letters
-  letters_df <- data.frame(
-    group = names(letters_df),
-    letter = unname(letters_df)
-  )
+  if (nrow(sig_pairs) > 0) {
 
-  # Adjust letter positions
-  max_values <- aggregate(value ~ group, data = data, max)
-  letters_df <- merge(max_values, letters_df, by = "group")
-  letters_df$value <- letters_df$value +
-    0.2 * max(letters_df$value, na.rm = TRUE)
+    comps <- strsplit(sig_pairs$Comparison, " - ")
 
-  # Labels and colors
+    sig_pairs$group1 <- sapply(comps, function(x) trimws(x[1]))
+    sig_pairs$group2 <- sapply(comps, function(x) trimws(x[2]))
+  }
+
+  group_levels <- levels(data$group)
+
+  sig_pairs$x1 <- match(sig_pairs$group1, group_levels)
+  sig_pairs$x2 <- match(sig_pairs$group2, group_levels)
+
+  sig_pairs$signif <- ifelse(sig_pairs$P.adj < 0.001, "***",
+                             ifelse(sig_pairs$P.adj < 0.01, "**",
+                                    ifelse(sig_pairs$P.adj < 0.05, "*", "")))
+
+  y_max <- max(data$value, na.rm = TRUE)
+  y_range <- diff(range(data$value, na.rm = TRUE))
+
+  step <- 0.08 * y_range
+
+  sig_pairs$y <- y_max + seq_len(nrow(sig_pairs)) * step
+
+
+  # --------------------------
+  # Colors
+  # --------------------------
+  # Vivid colors
   vivid_colors <- scales::hue_pal()(length(unique(data$group)))
+
+  # mono
+  n <- length(groups)
+
+  mono_colors <- gray.colors(
+    n,
+    start = 0.9,
+    end = 0.1
+  )
 
   # --------------------------
   # STYLE 1: Boxplot + jitter
   # --------------------------
   if (style == "boxplot") {
     g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA) +
-      ggplot2::geom_jitter(width = 0.1, alpha = 0.5, color = "black") +
-      ggplot2::geom_text(
-        data = letters_df,
-        ggplot2::aes(x = group, y = value, label = letter),
-        size = 4,
-        vjust = 0
-      ) +
+      ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA, width = 0.7, linewidth = 0.7) +
+      ggplot2::geom_jitter(width = 0.1, alpha = 0.5, color = "grey25") +
       ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::theme_minimal(base_size = 12) +
@@ -306,15 +324,9 @@ return(invisible(NULL))
       ) +
       ggplot2::geom_point(
         position = ggplot2::position_jitter(width = 0.1),
-        alpha = 0.4,
+        alpha = 0.2,
         size = 1.8,
         color = "gray25"
-      ) +
-      ggplot2::geom_text(
-        data = letters_df,
-        ggplot2::aes(x = group, y = value, label = letter),
-        size = 4,
-        vjust = 0
       ) +
       ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::scale_fill_manual(values = vivid_colors) +
@@ -326,31 +338,18 @@ return(invisible(NULL))
   }
 
   # --------------------------
-  # STYLE 3: Monochrome premium
+  # STYLE 3: monochrome premium
   # --------------------------
-  if (style == "monochrome") {
-    g <- ggplot2::ggplot(data, ggplot2::aes(group, value)) +
-      ggplot2::geom_violin(alpha = .6, trim = FALSE, adjust = 0.6,
-                           fill = "gray85", color = NA) +
-      ggplot2::geom_boxplot(width = 0.18, fill = "white") +
-      ggplot2::geom_point(
-        position = ggplot2::position_jitter(width = 0.1),
-        color = "gray20",
-        alpha = 0.4
-      ) +
-      ggplot2::geom_text(
-        data = letters_df,
-        ggplot2::aes(x = group, y = value, label = letter),
-        size = 4,
-        vjust = 0
-      ) +
+  if (style == "mono") {
+    g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggplot2::geom_boxplot(alpha = 0.7,outlier.shape = NA, width = 0.7, linewidth = 0.7, color = "black") +
+      ggplot2::geom_jitter(width = 0.1, alpha = 0.2, color = "grey25") +
       ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::theme(
-        legend.position = "none",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
-      )
-  }
+      ggplot2::scale_fill_manual(values = mono_colors) +
+      ggplot2::theme(legend.position = "none",
+                     axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
+   }
 
   # --------------------------
   # STYLE 4: Half-eye (ggdist)
@@ -383,12 +382,6 @@ return(invisible(NULL))
         interval_color = "black",
         .width = 0.95
       ) +
-      ggplot2::geom_text(
-        data = letters_df,
-        ggplot2::aes(x = group, y = value, label = letter),
-        size = 4,
-        vjust = 0
-      ) +
       ggplot2::labs(title = title, x = "", y = ylab) +
       ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::theme_minimal(base_size = 12) +
@@ -398,8 +391,16 @@ return(invisible(NULL))
       )
   }
 
+  # --------------------------
+  # Annotation and print
+  # --------------------------
+  g <- g + .add_significance(sig_pairs, y_range)
+
   print(g)
 
+  # --------------------------
+  # Return
+  # --------------------------
   invisible(list(
     type = "Kruskal-Wallis",
     H = H,

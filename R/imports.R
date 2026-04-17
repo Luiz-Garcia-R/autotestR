@@ -2,13 +2,15 @@
 # Imports
 # -------------------------------
 
-# stats (statistical tests and auxiliary functions)
+# stats
 # ---------------------------------------------------------------------------------
-# Basic statistical fuctions
 #' @importFrom stats sd aggregate shapiro.test ks.test t.test wilcox.test var.test
 #' @importFrom stats TukeyHSD complete.cases setNames na.omit
-# Functions utilized in tests
-#' @importFrom stats chisq.test confint formula kruskal.test lm nobs p.adjust qnorm quantile reformulate
+#' @importFrom stats chisq.test confint formula kruskal.test lm nobs p.adjust qnorm quantile reformulate dist
+
+# grDevices
+# ---------------------------------------------------------------------------------
+#' @importFrom grDevices gray.colors
 
 # utils
 # ---------------------------------------------------------------------------------

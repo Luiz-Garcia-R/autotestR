@@ -21,7 +21,7 @@
   ci <- quantile(boot_stat, c(0.025, 0.975), na.rm = TRUE)
 
   list(
-    stat = mean(boot_stat, na.rm = TRUE),
+    stat = stat_fun(x),
     ci_low = ci[1],
     ci_high = ci[2],
     boot = boot_stat

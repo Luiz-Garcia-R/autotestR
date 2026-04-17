@@ -12,7 +12,7 @@
 #' @param xlab X-axis label.
 #' @param ylab Y-axis label.
 #' @param style Plot style. One of "boxplot", "violin",
-#'   "monochrome", or "halfeye".
+#'   "mono", or "halfeye".
 #' @param p_adjust Method for multiple testing correction.
 #'   One of "none", "holm", "BH", "bonferroni".
 #' @param help Logical. If TRUE, prints usage examples.
@@ -60,7 +60,7 @@ test.tmulti <- function(...,
                         title = "Multiple comparisons (t / MW)",
                         xlab = "",
                         ylab = "Value",
-                        style = c("boxplot", "violin", "monochrome", "halfeye"),
+                        style = c("boxplot", "violin", "mono", "halfeye"),
                         p_adjust = c("none", "holm", "BH", "bonferroni"),
                         help = FALSE,
                         verbose = TRUE) {
@@ -86,8 +86,6 @@ Performs multiple pairwise comparisons using
 Student t-test or Mann-Whitney, with diagnostics.
 
 Example:
-
-# Example 1:
 df <- data.frame(
   control   = rnorm(30, 10),
   treatment = rnorm(30, 12),
@@ -95,7 +93,6 @@ df <- data.frame(
   test2     = rnorm(30, 15)
 )
 
-# Example 2:
 test.tmulti(
   df,
   comparisons = list(c('control','treatment'),
@@ -105,7 +102,6 @@ test.tmulti(
 
 return(invisible(NULL))
   }
-
 
   # ==============================
   # Required packages
@@ -401,19 +397,33 @@ return(invisible(NULL))
 
   results$y <- y_max + seq_len(nrow(results)) * step
 
-  ann <- results |>
-    dplyr::filter(signif != "")
-
   results <- results |>
     dplyr::mutate(dist = abs(x1 - x2)) |>
     dplyr::arrange(dist)
 
+  signif_pairs <- results |>
+    dplyr::filter(signif != "")
+
+  signif_pairs$y <- y_max + seq_len(nrow(signif_pairs)) * step
+
+  # ==============================
+  # Colors
+  # ==============================
+  # Vivid colors
+  vivid_colors <- scales::hue_pal()(length(unique(data_long$group)))
+
+  # mono
+  n <- length(group_order)
+
+  mono_colors <- gray.colors(
+    n,
+    start = 0.9,
+    end = 0.1
+  )
+
   # ==============================
   # Plot
   # ==============================
-
-  colors <- scales::hue_pal()(length(group_order))
-
   base_theme <-
     ggplot2::theme_minimal(base_size = 12) +
     ggplot2::theme(
@@ -428,7 +438,6 @@ return(invisible(NULL))
   # ----------------------------
   # Style 1 (Boxplot)
   # ----------------------------
-
   if (style == "boxplot") {
 
     g <- ggplot2::ggplot(
@@ -437,64 +446,15 @@ return(invisible(NULL))
     ) +
       ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA) +
       ggplot2::geom_jitter(width = 0.1, alpha = 0.4) +
-      ggplot2::scale_fill_manual(values = colors) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
       base_theme +
       ggplot2::labs(title = title, x = "", y = ylab)
-
-    if (nrow(ann) > 0) {
-
-      g <- g +
-
-        ggplot2::geom_segment(
-          data = ann,
-          ggplot2::aes(
-            x = x1,
-            xend = x2,
-            y = y,
-            yend = y
-          ),
-          inherit.aes = FALSE
-        ) +
-
-        ggplot2::geom_segment(
-          data = ann,
-          ggplot2::aes(
-            x = x1,
-            xend = x1,
-            y = y,
-            yend = y - 0.02 * y_range
-          ),
-          inherit.aes = FALSE
-        ) +
-
-        ggplot2::geom_segment(
-          data = ann,
-          ggplot2::aes(
-            x = x2,
-            xend = x2,
-            y = y,
-            yend = y - 0.02 * y_range
-          ),
-          inherit.aes = FALSE
-        ) +
-
-        ggplot2::geom_text(
-          data = ann,
-          ggplot2::aes(
-            x = (x1 + x2)/2,
-            y = y + 0.02 * y_range,
-            label = signif
-          ),
-          inherit.aes = FALSE,
-          size = 5
-        )
     }
 
   # ----------------------------
   # Style 2 (Violin)
   # ----------------------------
-
-} else if (style == "violin") {
+  if (style == "violin") {
 
   g <- ggplot2::ggplot(
     data_long,
@@ -516,132 +476,31 @@ return(invisible(NULL))
       size = 1.8,
       color = "gray25"
     ) +
+    ggplot2::scale_fill_manual(values = vivid_colors) +
     base_theme +
     ggplot2::labs(title = title, x = "", y = ylab)
-
-  if (nrow(ann) > 0) {
-
-    g <- g +
-
-      ggplot2::geom_segment(
-        data = ann,
-        ggplot2::aes(
-          x = x1,
-          xend = x2,
-          y = y,
-          yend = y
-        ),
-        inherit.aes = FALSE
-      ) +
-
-      ggplot2::geom_segment(
-        data = ann,
-        ggplot2::aes(
-          x = x1,
-          xend = x1,
-          y = y,
-          yend = y - 0.02 * y_range
-        ),
-        inherit.aes = FALSE
-      ) +
-
-      ggplot2::geom_segment(
-        data = ann,
-        ggplot2::aes(
-          x = x2,
-          xend = x2,
-          y = y,
-          yend = y - 0.02 * y_range
-        ),
-        inherit.aes = FALSE
-      ) +
-
-      ggplot2::geom_text(
-        data = ann,
-        ggplot2::aes(
-          x = (x1 + x2)/2,
-          y = y + 0.02 * y_range,
-          label = signif
-        ),
-        inherit.aes = FALSE,
-        size = 5
-      )
   }
 
   # ----------------------------
-  # Style 3 (Monochrome)
+  # Style 3 (monochrome)
   # ----------------------------
-
-} else if (style == "monochrome") {
+  if (style == "mono") {
 
   g <- ggplot2::ggplot(
     data_long,
-    ggplot2::aes(group, value)
+    ggplot2::aes(group, value, fill = group)
   ) +
-    ggplot2::geom_violin(fill = "gray85", color = NA) +
-    ggplot2::geom_boxplot(width = 0.18, fill = "white") +
-    ggplot2::geom_point(
-      position = ggplot2::position_jitter(width = .1),
-      color = "gray20",
-      alpha = .4
-    ) +
+    ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+    ggplot2::geom_jitter(width = 0.1, alpha = 0.4) +
+    ggplot2::scale_fill_manual(values = mono_colors) +
     base_theme +
     ggplot2::labs(title = title, x = "", y = ylab)
-
-  if (nrow(ann) > 0) {
-
-    g <- g +
-
-      ggplot2::geom_segment(
-        data = ann,
-        ggplot2::aes(
-          x = x1,
-          xend = x2,
-          y = y,
-          yend = y
-        ),
-        inherit.aes = FALSE
-      ) +
-
-      ggplot2::geom_segment(
-        data = ann,
-        ggplot2::aes(
-          x = x1,
-          xend = x1,
-          y = y,
-          yend = y - 0.02 * y_range
-        ),
-        inherit.aes = FALSE
-      ) +
-
-      ggplot2::geom_segment(
-        data = ann,
-        ggplot2::aes(
-          x = x2,
-          xend = x2,
-          y = y,
-          yend = y - 0.02 * y_range
-        ),
-        inherit.aes = FALSE
-      ) +
-
-      ggplot2::geom_text(
-        data = ann,
-        ggplot2::aes(
-          x = (x1 + x2)/2,
-          y = y + 0.02 * y_range,
-          label = signif
-        ),
-        inherit.aes = FALSE,
-        size = 5
-      )
   }
 
   # ----------------------------
   # Style 4 (Half eye)
   # ----------------------------
-
-} else if (style == "halfeye" && has_ggdist) {
+  if (style == "halfeye" && has_ggdist) {
 
   g <- ggplot2::ggplot(
     data_long,
@@ -669,64 +528,17 @@ return(invisible(NULL))
       interval_color = "black",
       .width = 0.95
     ) +
-    ggplot2::scale_fill_brewer(palette = "Set1") +
+    ggplot2::scale_fill_manual(values = vivid_colors) +
     base_theme +
     ggplot2::labs(title = title, x = "", y = ylab)
-
-  if (nrow(ann) > 0) {
-
-    g <- g +
-
-      ggplot2::geom_segment(
-        data = ann,
-        ggplot2::aes(
-          x = x1,
-          xend = x2,
-          y = y,
-          yend = y
-        ),
-        inherit.aes = FALSE
-      ) +
-
-      ggplot2::geom_segment(
-        data = ann,
-        ggplot2::aes(
-          x = x1,
-          xend = x1,
-          y = y,
-          yend = y - 0.02 * y_range
-        ),
-        inherit.aes = FALSE
-      ) +
-
-      ggplot2::geom_segment(
-        data = ann,
-        ggplot2::aes(
-          x = x2,
-          xend = x2,
-          y = y,
-          yend = y - 0.02 * y_range
-        ),
-        inherit.aes = FALSE
-      ) +
-
-      ggplot2::geom_text(
-        data = ann,
-        ggplot2::aes(
-          x = (x1 + x2)/2,
-          y = y + 0.02 * y_range,
-          label = signif
-        ),
-        inherit.aes = FALSE,
-        size = 5
-      )
   }
 
-  } else {
-    stop("Invalid style. Use 'boxplot', 'violin', 'monochrome' or 'halfeye'.")
-  }
+  # --------------------------
+  # Annotation and print
+  # --------------------------
+  g <- g + .add_significance(signif_pairs, y_range)
 
-  if (verbose) print(g)
+  print(g)
 
   # ==============================
   # Output

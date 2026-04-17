@@ -9,7 +9,7 @@ test.anova(
   title = "ANOVA/Tukey HSD",
   xlab = "Group",
   ylab = "Value",
-  style = c("boxplot", "violin", "monochrome", "halfeye"),
+  style = c("boxplot", "violin", "mono", "halfeye"),
   help = FALSE,
   verbose = TRUE
 )

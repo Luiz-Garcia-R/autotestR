@@ -9,7 +9,7 @@ test.u(
   title = "Mann-Whitney Test",
   xlab = "Group",
   ylab = "Value",
-  style = c("boxplot", "violin", "monochrome", "halfeye"),
+  style = c("boxplot", "violin", "mono", "halfeye"),
   help = FALSE,
   verbose = TRUE
 )

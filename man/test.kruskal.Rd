@@ -9,7 +9,7 @@ test.kruskal(
   title = "Kruskal-Wallis + Dunn",
   xlab = "Group",
   ylab = "Value",
-  style = c("boxplot", "violin", "monochrome", "halfeye"),
+  style = c("boxplot", "violin", "mono", "halfeye"),
   adjust = c("bonferroni", "holm", "BH"),
   help = FALSE,
   verbose = TRUE
@@ -26,7 +26,7 @@ two or more columns (each column is treated as a group).}
 \item{ylab}{Character. Y-axis label.}
 
 \item{style}{Character. Plot style. One of:
-\code{"boxplot"}, \code{"violin"}, \code{"monochrome"}, or \code{"halfeye"}.}
+\code{"boxplot"}, \code{"violin"}, \code{"mono"}, or \code{"halfeye"}.}
 
 \item{adjust}{Character. Method for p-value adjustment in Dunn's test.
 One of \code{"bonferroni"}, \code{"holm"}, or \code{"BH"}.}
