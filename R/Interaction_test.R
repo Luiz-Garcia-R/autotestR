@@ -37,31 +37,21 @@
 #'
 #' @examples
 #'
-#' # Simulated biological dataset
+#' # Simple example: different trends between groups
+#'
 #' set.seed(123)
 #'
 #' n <- 60
-#' df_bio <- data.frame(
-#'   marker   = rnorm(n, mean = 10, sd = 2),
-#'   group    = rep(c("Control", "Treatment"), each = n / 2)
-#' )
 #'
-#' # Outcome depends on marker differently by group
-#' df_bio$response <- with(
-#'   df_bio,
-#'   ifelse(
-#'     group == "Control",
-#'     2 + 0.5 * marker + rnorm(n, 0, 1),
-#'     2 + 1.2 * marker + rnorm(n, 0, 1)
-#'   )
-#' )
+#' marker <- rnorm(n, 10, 2)
+#' group  <- rep(c("Control", "Treatment"), each = n/2)
 #'
-#' # Interaction test
-#' test.interaction(
-#'   x  = df_bio$marker,
-#'   y  = df_bio$response,
-#'   by = df_bio$group
-#' )
+#' # Same intercept, different slopes
+#' response <- 2 +
+#'   ifelse(group == "Control", 0.5, 1.2) * marker +
+#'   rnorm(n, 0, 1)
+#'
+#' test.interaction(marker, response, group)
 #'
 #' @export
 
@@ -203,6 +193,8 @@ by = df_bio$group)
 
   summary_table <- do.call(data.frame, summary_table)
 
+  main_interaction <- interaction_info[[1]]
+
   # ---------------------------
   # Plot
   # ---------------------------
@@ -243,6 +235,10 @@ by = df_bio$group)
       g <- g +
         ggplot2::labs(
           title = if (is.null(title)) paste(y_var, "vs", x_var) else title,
+          subtitle = .build_subtitle_interaction(
+            main_interaction$beta,
+            main_interaction$p
+          ),
           x = if (is.null(xlab)) x_var else xlab,
           y = if (is.null(ylab)) y_var else ylab,
           color = by_var,
@@ -252,6 +248,10 @@ by = df_bio$group)
       g <- g +
         ggplot2::labs(
           title = if (is.null(title)) paste(y_var, "vs", x_var) else title,
+          subtitle = .build_subtitle_interaction(
+            main_interaction$beta,
+            main_interaction$p
+          ),
           x = if (is.null(xlab)) x_var else xlab,
           y = if (is.null(ylab)) y_var else ylab
         )

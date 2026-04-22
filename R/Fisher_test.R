@@ -50,6 +50,13 @@ When to use:
 Effect size:
   - Odds Ratio (OR)
   - log(OR) with confidence interval
+
+Example:
+data <- data.frame(control = c('healthy','healthy','sick','sick','sick'),
+                   treatment = c('healthy','healthy','healthy','healthy','sick'))
+
+test.fisher(data)
+
 "
       )
     }
@@ -152,7 +159,133 @@ Effect size:
   log_ci <- log(ci)
 
   # -----------------------------
+  # Prepare plot data
+  # -----------------------------
+
+  df_plot <- data.frame(group = group, category = category)
+
+  df_prop <- df_plot |>
+    dplyr::group_by(group, category) |>
+    dplyr::summarise(n = dplyr::n(), .groups = "drop") |>
+    dplyr::group_by(group) |>
+    dplyr::mutate(prop = n / sum(n))
+
+  # --- Subtitle ---
+  subtitle_text <- .make_subtitle_fisher(
+    or = or,
+    p_value = test$p.value
+  )
+
+  # --- Colors ---
+  vivid_colors <- scales::hue_pal()(length(unique(df_prop$group)))
+
+  # -----------------------------
+  # Plots
+  # -----------------------------
+
+  # --- Stacked ---
+  if (style == "stacked") {
+
+    g <- ggplot2::ggplot(
+      df_prop,
+      ggplot2::aes(x = group, y = prop, fill = category)
+    ) +
+      ggplot2::geom_bar(stat = "identity") +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::labs(
+        title = title,
+        subtitle = subtitle_text,
+        y = ylab,
+        fill = name_y
+      ) +
+      ggplot2::theme_minimal()
+
+  }
+
+  # --- Barplot ---
+  if (style == "barplot") {
+
+    g <- ggplot2::ggplot(
+      df_prop,
+      ggplot2::aes(x = group, y = prop, fill = category)
+    ) +
+      ggplot2::geom_bar(
+        stat = "identity",
+        position = ggplot2::position_dodge()
+      ) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::labs(
+        title = title,
+        subtitle = subtitle_text,
+        y = ylab,
+        fill = name_y
+      ) +
+      ggplot2::theme_minimal()
+  }
+
+  # --- Mosaic ---
+  if (style == "mosaic") {
+
+    vcd::mosaic(
+      contingency_table,
+      shade = TRUE,
+      legend = TRUE,
+      main = paste0(title, "\n", subtitle_text)
+    )
+  }
+
+  # --- Pie ---
+  # --- Pie ---
+  if (style == "pie") {
+
+    g <- ggplot2::ggplot(
+      df_prop,
+      ggplot2::aes(x = "", y = prop, fill = category)
+    ) +
+      ggplot2::geom_bar(stat = "identity", width = 1) +
+      ggplot2::coord_polar("y") +
+      ggplot2::facet_wrap(~ group) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::theme_void(base_size = 12) +
+      ggplot2::labs(
+        title = title,
+        subtitle = subtitle_text,
+        fill = name_y
+      ) +
+      ggplot2::theme(
+        plot.title = ggplot2::element_text(
+          hjust = 0.5,
+          size = 14
+        ),
+        plot.subtitle = ggplot2::element_text(
+          hjust = 0.5,
+          size = 11,
+          margin = ggplot2::margin(b = 10)
+        ),
+        strip.text = ggplot2::element_text(
+          size = 12
+        )
+      )
+  }
+
+  if (style != "mosaic") print(g)
+
+  # -----------------------------
   # Output
+  # -----------------------------
+  obj <- list(
+    type = "Fisher",
+    p = test$p.value,
+    odds_ratio = or,
+    or_ci = ci,
+    log_or = log_or,
+    log_or_ci = log_ci,
+    table = contingency_table,
+    data = df_plot
+  )
+
+  # -----------------------------
+  # Return
   # -----------------------------
 
   if (verbose) {
@@ -160,13 +293,6 @@ Effect size:
     .print_header("Fisher's Exact Test")
 
     .print_block("Statistics", function() {
-
-      cat(
-        "p = ",
-        .format_pval(test$p.value),
-        "\n",
-        sep = ""
-      )
 
       cat(
         "Odds Ratio = ",
@@ -187,107 +313,15 @@ Effect size:
         "]\n",
         sep = ""
       )
+
+      cat(
+        "p = ",
+        .format_pval(test$p.value),
+        "\n",
+        sep = ""
+      )
     })
   }
 
-  # -----------------------------
-  # Plot data
-  # -----------------------------
-
-  df_plot <- data.frame(group = group, category = category)
-
-  df_prop <- df_plot |>
-    dplyr::group_by(group, category) |>
-    dplyr::summarise(n = dplyr::n(), .groups = "drop") |>
-    dplyr::group_by(group) |>
-    dplyr::mutate(prop = n / sum(n))
-
-  vivid_colors <- scales::hue_pal()(length(unique(df_prop$group)))
-
-  # -----------------------------
-  # Plots
-  # -----------------------------
-
-  if (style == "stacked") {
-
-    g <- ggplot2::ggplot(
-      df_prop,
-      ggplot2::aes(x = group, y = prop, fill = category)
-    ) +
-      ggplot2::geom_bar(stat = "identity") +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
-      ggplot2::labs(
-        title = title,
-        y = ylab,
-        fill = name_y
-      ) +
-      ggplot2::theme_minimal()
-
-  }
-
-
-  if (style == "barplot") {
-
-    g <- ggplot2::ggplot(
-      df_prop,
-      ggplot2::aes(x = group, y = prop, fill = category)
-    ) +
-      ggplot2::geom_bar(
-        stat = "identity",
-        position = ggplot2::position_dodge()
-      ) +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
-      ggplot2::labs(
-        title = title,
-        y = ylab,
-        fill = name_y
-      ) +
-      ggplot2::theme_minimal()
-  }
-
-
-  if (style == "mosaic") {
-
-    vcd::mosaic(
-      contingency_table,
-      shade = TRUE,
-      legend = TRUE,
-      main = title
-    )
-  }
-
-
-  if (style == "pie") {
-
-    g <- ggplot2::ggplot(
-      df_prop,
-      ggplot2::aes(x = "", y = prop, fill = category)
-    ) +
-      ggplot2::geom_bar(stat = "identity", width = 1) +
-      ggplot2::coord_polar("y") +
-      ggplot2::facet_wrap(~ group) +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
-      ggplot2::theme_void() +
-      ggplot2::labs(
-        title = title,
-        fill = name_y
-      )
-  }
-
-  if (style != "mosaic") print(g)
-
-  # -----------------------------
-  # Return
-  # -----------------------------
-
-  invisible(list(
-    type = "Fisher",
-    p = test$p.value,
-    odds_ratio = or,
-    or_ci = ci,
-    log_or = log_or,
-    log_or_ci = log_ci,
-    table = contingency_table,
-    data = df_plot
-  ))
+  return(invisible(list(result = obj)))
 }

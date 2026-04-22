@@ -1,6 +1,6 @@
 Package: autotestR
 Title: Automated Functions for Basic Statistical Tests
-Version: 1.2.12
+Version: 1.2.13
 Authors@R: 
     person("Luiz", "Garcia", 
            email = "luiz.cardoso@ufpr.br", 
@@ -21,6 +21,5 @@ Imports: car, crayon, dplyr, FSA, ggplot2, ggdist, ggExtra, nortest,
         purrr, RColorBrewer, scales, stats, tibble, tidyr, tidyselect,
         utils, vcd
 NeedsCompilation: no
-Packaged: 2026-04-10 12:28:33 UTC; Seu Computador
 Author: Luiz Garcia [aut, cre] (<https://orcid.org/0000-0002-9616-0927>, UFPR)
 Maintainer: Luiz Garcia <luiz.cardoso@ufpr.br>

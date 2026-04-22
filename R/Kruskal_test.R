@@ -171,6 +171,197 @@ return(invisible(NULL))
   dunn_df <- dunn_res$res
   significant_pairs <- subset(dunn_df, P.adj < 0.05)
 
+  # --------------------------
+  # Labels position
+  # --------------------------
+  sig_pairs <- significant_pairs
+
+  if (nrow(sig_pairs) > 0) {
+
+    comps <- strsplit(sig_pairs$Comparison, " - ")
+
+    sig_pairs$group1 <- sapply(comps, function(x) trimws(x[1]))
+    sig_pairs$group2 <- sapply(comps, function(x) trimws(x[2]))
+  }
+
+  group_levels <- levels(data$group)
+
+  sig_pairs$x1 <- match(sig_pairs$group1, group_levels)
+  sig_pairs$x2 <- match(sig_pairs$group2, group_levels)
+
+  sig_pairs$signif <- ifelse(sig_pairs$P.adj < 0.001, "***",
+                             ifelse(sig_pairs$P.adj < 0.01, "**",
+                                    ifelse(sig_pairs$P.adj < 0.05, "*", "")))
+
+  y_max <- max(data$value, na.rm = TRUE)
+  y_range <- diff(range(data$value, na.rm = TRUE))
+
+  step <- 0.08 * y_range
+
+  sig_pairs$y <- y_max + seq_len(nrow(sig_pairs)) * step
+
+
+  # --------------------------
+  # Colors
+  # --------------------------
+  # Vivid colors
+  vivid_colors <- scales::hue_pal()(length(unique(data$group)))
+
+  # mono
+  n <- length(groups)
+
+  mono_colors <- gray.colors(
+    n,
+    start = 0.9,
+    end = 0.1
+  )
+
+  # --------------------------
+  # STYLE 1: Boxplot + jitter
+  # --------------------------
+  if (style == "boxplot") {
+    g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA, width = 0.7, linewidth = 0.7) +
+      ggplot2::geom_jitter(width = 0.1, alpha = 0.5, color = "grey25") +
+      ggplot2::labs(
+        title = title,
+        subtitle = .build_subtitle_kw(p_kruskal, epsilon_sq),
+        x = "",
+        y = ylab
+      ) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::theme(
+        legend.position = "none",
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
+      )
+  }
+
+  # --------------------------
+  # STYLE 2: Violin + minimalist boxplot
+  # --------------------------
+  if (style == "violin") {
+    g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggplot2::geom_violin(
+        trim = FALSE,
+        alpha = 0.6,
+        color = NA,
+        adjust = 0.6
+      ) +
+      ggplot2::geom_boxplot(
+        width = 0.18,
+        outlier.shape = NA,
+        color = "gray20",
+        linewidth = 0.4
+      ) +
+      ggplot2::geom_point(
+        position = ggplot2::position_jitter(width = 0.1),
+        alpha = 0.2,
+        size = 1.8,
+        color = "gray25"
+      ) +
+      ggplot2::labs(
+        title = title,
+        subtitle = .build_subtitle_kw(p_kruskal, epsilon_sq),
+        x = "",
+        y = ylab
+      ) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::theme(
+        legend.position = "none",
+        axis.text.x = ggplot2::element_text(angle = 45,
+                                            hjust = 1,
+                                            size = 12)
+      )
+  }
+
+  # --------------------------
+  # STYLE 3: monochrome premium
+  # --------------------------
+  if (style == "mono") {
+    g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggplot2::geom_boxplot(alpha = 0.7,outlier.shape = NA, width = 0.7, linewidth = 0.7, color = "black") +
+      ggplot2::geom_jitter(width = 0.1, alpha = 0.2, color = "grey25") +
+      ggplot2::labs(
+        title = title,
+        subtitle = .build_subtitle_kw(p_kruskal, epsilon_sq),
+        x = "",
+        y = ylab
+      ) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::scale_fill_manual(values = mono_colors) +
+      ggplot2::theme(legend.position = "none",
+                     axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
+   }
+
+  # --------------------------
+  # STYLE 4: Half-eye (ggdist)
+  # --------------------------
+  if (style == "halfeye") {
+    if (!requireNamespace("ggdist", quietly = TRUE)) {
+      stop("Style = 'halfeye' requires the 'ggdist' package.")
+    }
+
+    g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggdist::stat_halfeye(
+        alpha = .6,
+        trim = FALSE,
+        adjust = 0.6,
+        width = 0.6,
+        .width = c(0.5, 0.8, 0.95),
+        justification = -0.2,
+        slab_color = "gray20",
+        interval_color = "gray20"
+      ) +
+      ggplot2::geom_point(
+        position = ggplot2::position_nudge(x = 0.15),
+        size = 1.1,
+        alpha = 0.4,
+        color = "black"
+      ) +
+      ggdist::stat_pointinterval(
+        position = ggplot2::position_nudge(x = 0.2),
+        point_color = "black",
+        interval_color = "black",
+        .width = 0.95
+      ) +
+      ggplot2::labs(
+        title = title,
+        subtitle = .build_subtitle_kw(p_kruskal, epsilon_sq),
+        x = "",
+        y = ylab
+      ) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::theme(
+        legend.position = "none",
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
+      )
+  }
+
+  # --------------------------
+  # Annotation and print
+  # --------------------------
+  g <- g + .add_significance(sig_pairs, y_range)
+
+  print(g)
+
+  # --------------------------
+  # Return
+  # --------------------------
+  invisible(list(
+    type = "Kruskal-Wallis",
+    H = H,
+    df = k - 1,
+    p = p_kruskal,
+    epsilon_sq = epsilon_sq,
+    epsilon_ci = eps_ci,
+    means_sd = mean_sd,
+    dunn = dunn_df,
+    significant_pairs = significant_pairs,
+    data = data
+  ))
 
   # -----------------------------
   # Output
@@ -243,174 +434,4 @@ return(invisible(NULL))
       }
     })
   }
-
-  # --------------------------
-  # Labels position
-  # --------------------------
-  sig_pairs <- significant_pairs
-
-  if (nrow(sig_pairs) > 0) {
-
-    comps <- strsplit(sig_pairs$Comparison, " - ")
-
-    sig_pairs$group1 <- sapply(comps, function(x) trimws(x[1]))
-    sig_pairs$group2 <- sapply(comps, function(x) trimws(x[2]))
-  }
-
-  group_levels <- levels(data$group)
-
-  sig_pairs$x1 <- match(sig_pairs$group1, group_levels)
-  sig_pairs$x2 <- match(sig_pairs$group2, group_levels)
-
-  sig_pairs$signif <- ifelse(sig_pairs$P.adj < 0.001, "***",
-                             ifelse(sig_pairs$P.adj < 0.01, "**",
-                                    ifelse(sig_pairs$P.adj < 0.05, "*", "")))
-
-  y_max <- max(data$value, na.rm = TRUE)
-  y_range <- diff(range(data$value, na.rm = TRUE))
-
-  step <- 0.08 * y_range
-
-  sig_pairs$y <- y_max + seq_len(nrow(sig_pairs)) * step
-
-
-  # --------------------------
-  # Colors
-  # --------------------------
-  # Vivid colors
-  vivid_colors <- scales::hue_pal()(length(unique(data$group)))
-
-  # mono
-  n <- length(groups)
-
-  mono_colors <- gray.colors(
-    n,
-    start = 0.9,
-    end = 0.1
-  )
-
-  # --------------------------
-  # STYLE 1: Boxplot + jitter
-  # --------------------------
-  if (style == "boxplot") {
-    g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA, width = 0.7, linewidth = 0.7) +
-      ggplot2::geom_jitter(width = 0.1, alpha = 0.5, color = "grey25") +
-      ggplot2::labs(title = title, x = "", y = ylab) +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::theme(
-        legend.position = "none",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
-      )
-  }
-
-  # --------------------------
-  # STYLE 2: Violin + minimalist boxplot
-  # --------------------------
-  if (style == "violin") {
-    g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggplot2::geom_violin(
-        trim = FALSE,
-        alpha = 0.6,
-        color = NA,
-        adjust = 0.6
-      ) +
-      ggplot2::geom_boxplot(
-        width = 0.18,
-        outlier.shape = NA,
-        color = "gray20",
-        linewidth = 0.4
-      ) +
-      ggplot2::geom_point(
-        position = ggplot2::position_jitter(width = 0.1),
-        alpha = 0.2,
-        size = 1.8,
-        color = "gray25"
-      ) +
-      ggplot2::labs(title = title, x = "", y = ylab) +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::theme(
-        legend.position = "none",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
-      )
-  }
-
-  # --------------------------
-  # STYLE 3: monochrome premium
-  # --------------------------
-  if (style == "mono") {
-    g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggplot2::geom_boxplot(alpha = 0.7,outlier.shape = NA, width = 0.7, linewidth = 0.7, color = "black") +
-      ggplot2::geom_jitter(width = 0.1, alpha = 0.2, color = "grey25") +
-      ggplot2::labs(title = title, x = "", y = ylab) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::scale_fill_manual(values = mono_colors) +
-      ggplot2::theme(legend.position = "none",
-                     axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
-   }
-
-  # --------------------------
-  # STYLE 4: Half-eye (ggdist)
-  # --------------------------
-  if (style == "halfeye") {
-    if (!requireNamespace("ggdist", quietly = TRUE)) {
-      stop("Style = 'halfeye' requires the 'ggdist' package.")
-    }
-
-    g <- ggplot2::ggplot(data, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggdist::stat_halfeye(
-        alpha = .6,
-        trim = FALSE,
-        adjust = 0.6,
-        width = 0.6,
-        .width = c(0.5, 0.8, 0.95),
-        justification = -0.2,
-        slab_color = "gray20",
-        interval_color = "gray20"
-      ) +
-      ggplot2::geom_point(
-        position = ggplot2::position_nudge(x = 0.15),
-        size = 1.1,
-        alpha = 0.4,
-        color = "black"
-      ) +
-      ggdist::stat_pointinterval(
-        position = ggplot2::position_nudge(x = 0.2),
-        point_color = "black",
-        interval_color = "black",
-        .width = 0.95
-      ) +
-      ggplot2::labs(title = title, x = "", y = ylab) +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::theme(
-        legend.position = "none",
-        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12)
-      )
-  }
-
-  # --------------------------
-  # Annotation and print
-  # --------------------------
-  g <- g + .add_significance(sig_pairs, y_range)
-
-  print(g)
-
-  # --------------------------
-  # Return
-  # --------------------------
-  invisible(list(
-    type = "Kruskal-Wallis",
-    H = H,
-    df = k - 1,
-    p = p_kruskal,
-    epsilon_sq = epsilon_sq,
-    epsilon_ci = eps_ci,
-    means_sd = mean_sd,
-    dunn = dunn_df,
-    significant_pairs = significant_pairs,
-    data = data
-  ))
 }

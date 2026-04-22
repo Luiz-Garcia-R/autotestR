@@ -163,8 +163,159 @@ Example:
   v <- .cramers_v(contingency_table)
   boot_v <- .boot_cramers_v(contingency_table)
 
+
   # -----------------------------
+  # Data preparation for plotting
+  # -----------------------------
+  df_plot <- data.frame(group = group, category = category)
+
+  df_prop <- df_plot |>
+    dplyr::group_by(group, category) |>
+    dplyr::summarise(n = dplyr::n(), .groups = "drop") |>
+    dplyr::group_by(group) |>
+    dplyr::mutate(prop = n / sum(n))
+
+  # Subtitle
+  subtitle_text <- .make_subtitle_chi(
+    cramers_v = v,
+    p_value = test$p.value,
+    small_expected = small_exp
+  )
+
+  # Labels and colors
+  vivid_colors <- scales::hue_pal()(length(unique(df_prop$group)))
+
+  # --------------------------
+  # STYLE 1 (Stacked bar plot)
+  # --------------------------
+  if (style == "stacked") {
+    g <- ggplot2::ggplot(
+      df_prop,
+      ggplot2::aes(x = group, y = prop, fill = category)
+    ) +
+      ggplot2::geom_bar(stat = "identity", color = NA) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::labs(
+        title = title,
+        subtitle = subtitle_text,
+        x = "",
+        y = ylab,
+        fill = name_y
+      ) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::theme(
+        legend.position = "right",
+        axis.text.x = ggplot2::element_text(
+          angle = 45, hjust = 1, size = 12
+        )
+      )
+  }
+
+  # --------------------------
+  # STYLE 2 (Side-by-side bars)
+  # --------------------------
+  if (style == "barplot") {
+    g <- ggplot2::ggplot(
+      df_prop,
+      ggplot2::aes(x = group, y = prop, fill = category)
+    ) +
+      ggplot2::geom_bar(
+        stat = "identity",
+        position = ggplot2::position_dodge(width = 0.8)
+      ) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::labs(
+        title = title,
+        subtitle = subtitle_text,
+        x = "",
+        y = ylab,
+        fill = name_y
+      ) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::theme(
+        legend.position = "right",
+        axis.text.x = ggplot2::element_text(
+          angle = 45, hjust = 1, size = 12
+        )
+      )
+  }
+
+  # --------------------------
+  # STYLE 3 (Mosaic plot)
+  # --------------------------
+  if (style == "mosaic") {
+    if (!requireNamespace("vcd", quietly = TRUE)) {
+      stop(
+        "Style = 'mosaic' requires the 'vcd' package. Install it with install.packages('vcd')"
+      )
+    }
+
+    vcd::mosaic(
+      contingency_table,
+      shade = TRUE,
+      legend = TRUE,
+      main = paste0(title, "\n", subtitle_text)
+    )
+  }
+
+  # --------------------------
+  # STYLE 4 (Pie chart)
+  # --------------------------
+  if (style == "pie") {
+
+    g <- ggplot2::ggplot(
+      df_prop,
+      ggplot2::aes(x = "", y = prop, fill = category)
+    ) +
+      ggplot2::geom_bar(stat = "identity", width = 1) +
+      ggplot2::coord_polar("y") +
+      ggplot2::facet_wrap(~ group) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::theme_void(base_size = 12) +
+      ggplot2::labs(
+        title = title,
+        subtitle = subtitle_text,
+        fill = name_y
+      ) +
+      ggplot2::theme(
+        plot.title = ggplot2::element_text(
+          hjust = 0.5,
+          size = 14
+        ),
+        plot.subtitle = ggplot2::element_text(
+          hjust = 0.5,
+          size = 11,
+          margin = ggplot2::margin(b = 10)
+        ),
+        strip.text = ggplot2::element_text(
+          size = 12
+        )
+      )
+  }
+
+  if (style != "mosaic") print(g)
+
+  # --------------------------
   # Output
+  # --------------------------
+  obj <- list(
+    type = "Chi-square",
+    statistic = as.numeric(test$statistic),
+    df = as.numeric(test$parameter),
+    p = test$p.value,
+    cramers_v = v,
+    cramers_ci = c(
+      boot_v$ci_low,
+      boot_v$ci_high
+    ),
+    expected = expected_freq,
+    table = contingency_table,
+    small_expected = small_exp,
+    data = df_plot
+  )
+
+  # -----------------------------
+  # Return
   # -----------------------------
 
   if (verbose) {
@@ -203,141 +354,7 @@ Example:
     })
   }
 
-  # Data preparation for plotting
-  df_plot <- data.frame(group = group, category = category)
+  return(invisible(list(result = obj)))
 
-  df_prop <- df_plot |>
-    dplyr::group_by(group, category) |>
-    dplyr::summarise(n = dplyr::n(), .groups = "drop") |>
-    dplyr::group_by(group) |>
-    dplyr::mutate(prop = n / sum(n))
-
-  # Labels and colors
-  vivid_colors <- scales::hue_pal()(length(unique(df_prop$group)))
-
-  # --------------------------
-  # STYLE 1 (Stacked bar plot)
-  # --------------------------
-  if (style == "stacked") {
-    g <- ggplot2::ggplot(
-      df_prop,
-      ggplot2::aes(x = group, y = prop, fill = category)
-    ) +
-      ggplot2::geom_bar(stat = "identity", color = NA) +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
-      ggplot2::labs(
-        title = title,
-        x = "",
-        y = ylab,
-        fill = name_y
-      ) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::theme(
-        legend.position = "right",
-        axis.text.x = ggplot2::element_text(
-          angle = 45, hjust = 1, size = 12
-        )
-      )
   }
-
-  # --------------------------
-  # STYLE 2 (Side-by-side bars)
-  # --------------------------
-  if (style == "barplot") {
-    g <- ggplot2::ggplot(
-      df_prop,
-      ggplot2::aes(x = group, y = prop, fill = category)
-    ) +
-      ggplot2::geom_bar(
-        stat = "identity",
-        position = ggplot2::position_dodge(width = 0.8)
-      ) +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
-      ggplot2::labs(
-        title = title,
-        x = "",
-        y = ylab,
-        fill = name_y
-      ) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::theme(
-        legend.position = "right",
-        axis.text.x = ggplot2::element_text(
-          angle = 45, hjust = 1, size = 12
-        )
-      )
-  }
-
-  # --------------------------
-  # STYLE 3 (Mosaic plot)
-  # --------------------------
-  if (style == "mosaic") {
-    if (!requireNamespace("vcd", quietly = TRUE)) {
-      stop(
-        "Style = 'mosaic' requires the 'vcd' package. Install it with install.packages('vcd')"
-      )
-    }
-
-    vcd::mosaic(
-      contingency_table,
-      shade = TRUE,
-      legend = TRUE,
-      main = title
-    )
-  }
-
-  # --------------------------
-  # STYLE 4 (Pie chart)
-  # --------------------------
-  if (style == "pie") {
-    g <- ggplot2::ggplot(
-      df_prop,
-      ggplot2::aes(x = "", y = prop, fill = category)
-    ) +
-      ggplot2::geom_bar(
-        stat = "identity",
-        width = 1,
-        color = "white"
-      ) +
-      ggplot2::coord_polar("y") +
-      ggplot2::facet_wrap(~ group) +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
-      ggplot2::labs(
-        title = title,
-        fill = name_y,
-        x = NULL,
-        y = NULL
-      ) +
-      ggplot2::theme_void(base_size = 12) +
-      ggplot2::theme(
-        strip.text = ggplot2::element_text(size = 12),
-        plot.title = ggplot2::element_text(
-          hjust = 0.5,
-          margin = ggplot2::margin(b = 25)
-        )
-      )
-  }
-
-  if (style != "mosaic") print(g)
-
-  # --------------------------
-  # Return
-  # --------------------------
-
-  invisible(list(
-    type = "Chi-square",
-    statistic = as.numeric(test$statistic),
-    df = as.numeric(test$parameter),
-    p = test$p.value,
-    cramers_v = v,
-    cramers_ci = c(
-      boot_v$ci_low,
-      boot_v$ci_high
-    ),
-    expected = expected_freq,
-    table = contingency_table,
-    small_expected = small_exp,
-    data = df_plot
-  ))
-}
 

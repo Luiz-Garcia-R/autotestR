@@ -73,30 +73,20 @@ Confidence intervals are emphasized as the primary inferential quantity.
 }
 \examples{
 
-# Simulated biological dataset
+# Simple example: different trends between groups
+
 set.seed(123)
 
 n <- 60
-df_bio <- data.frame(
-  marker   = rnorm(n, mean = 10, sd = 2),
-  group    = rep(c("Control", "Treatment"), each = n / 2)
-)
 
-# Outcome depends on marker differently by group
-df_bio$response <- with(
-  df_bio,
-  ifelse(
-    group == "Control",
-    2 + 0.5 * marker + rnorm(n, 0, 1),
-    2 + 1.2 * marker + rnorm(n, 0, 1)
-  )
-)
+marker <- rnorm(n, 10, 2)
+group  <- rep(c("Control", "Treatment"), each = n/2)
 
-# Interaction test
-test.interaction(
-  x  = df_bio$marker,
-  y  = df_bio$response,
-  by = df_bio$group
-)
+# Same intercept, different slopes
+response <- 2 +
+  ifelse(group == "Control", 0.5, 1.2) * marker +
+  rnorm(n, 0, 1)
+
+test.interaction(marker, response, group)
 
 }

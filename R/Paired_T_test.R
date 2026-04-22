@@ -170,6 +170,8 @@ Returns:
     ""
   }
 
+  mean_diff <- mean(d)
+
   y_pos <- max(data$value, na.rm = TRUE) +
     0.1 * diff(range(data$value, na.rm = TRUE))
 
@@ -185,6 +187,7 @@ Returns:
     )
   }
 
+  # --- Colors ---
   vivid_colours <- scales::hue_pal()(length(unique(data$group)))
   mono_colors <- c("grey75", "grey25")
 
@@ -213,6 +216,7 @@ Returns:
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
         title = title,
+        subtitle = .build_subtitle(mean_diff, p_value, "mean diff"),
         x = xlab,
         y = ylab
       ) +
@@ -246,6 +250,7 @@ Returns:
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
         title = title,
+        subtitle = .build_subtitle(mean_diff, p_value, "mean diff"),
         x = xlab,
         y = ylab
       ) +
@@ -272,6 +277,7 @@ Returns:
       ggplot2::scale_fill_manual(values = mono_colors) +
       ggplot2::labs(
         title = title,
+        subtitle = .build_subtitle(mean_diff, p_value, "mean diff"),
         x = "",
         y = ylab
       ) +
@@ -310,6 +316,7 @@ Returns:
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
         title = title,
+        subtitle = .build_subtitle(mean_diff, p_value, "mean diff"),
         x = xlab,
         y = ylab
       ) +

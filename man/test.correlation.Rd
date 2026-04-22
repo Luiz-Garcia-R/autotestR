@@ -13,9 +13,9 @@ test.correlation(
   xlab = NULL,
   ylab = NULL,
   style = c("simple", "inference", "structure", "density", "distribution"),
+  plot_normality = FALSE,
   help = FALSE,
-  verbose = TRUE,
-  plot_normality = FALSE
+  verbose = TRUE
 )
 
 \method{print}{test.correlation}(x, ...)
@@ -40,13 +40,13 @@ from the input. If \code{FALSE}, no label is shown.}
 \item{style}{Plot style: \code{"simple"} (default), \code{"inference"},
 \code{"structure"}, \code{"density"}, or \code{"distribution"}.}
 
+\item{plot_normality}{Logical. If \code{TRUE}, displays QQ-plots for
+normality assessment.}
+
 \item{help}{Logical. If \code{TRUE}, displays a detailed usage guide.}
 
 \item{verbose}{Logical. If \code{TRUE}, prints information about method
 selection and diagnostics.}
-
-\item{plot_normality}{Logical. If \code{TRUE}, displays QQ-plots for
-normality assessment.}
 
 \item{...}{Additional arguments passed to other print methods (currently ignored)}
 }

@@ -44,9 +44,9 @@ Description:
 
 Example:
   df <- data.frame(
-    control = rnorm(30, 10, sd = 1),
-    treatment = rnorm(30, 11, sd = 1),
-    test = rnorm(30, 11, sd = 1)
+    control = rnorm(30, 10, sd = 0.5),
+    treatment = rnorm(30, 11, sd = 0.5),
+    test = rnorm(30, 11, sd = 0.5)
   )
 
 test.anova(df)
@@ -143,6 +143,11 @@ test.anova(df)
   omega_sq <- (ss_between - df_between * ms_within) /
     (ss_total + ms_within)
 
+  F_value <- anova_tab[1, "F value"]
+  df1 <- anova_tab[1, "Df"]
+  df2 <- anova_tab[nrow(anova_tab), "Df"]
+  n_total <- nrow(data_long)
+
   # --- Bootstrap CI for omega squared ---
   boot_omega <- .boot_anova_omega(
     data  = data_long,
@@ -179,7 +184,158 @@ test.anova(df)
   means_sd <- do.call(data.frame, means_sd)
   colnames(means_sd)[2:3] <- c("mean", "sd")
 
-  # Friendly output
+  # --------------------------
+  # Labels position
+  # --------------------------
+  sig_pairs <- significant_pairs
+
+  if (nrow(sig_pairs) > 0) {
+
+    comps <- strsplit(sig_pairs$Comparison, "-")
+
+    sig_pairs$group1 <- sapply(comps, function(x) trimws(x[1]))
+    sig_pairs$group2 <- sapply(comps, function(x) trimws(x[2]))
+  }
+
+  group_levels <- levels(data_long$group)
+
+  sig_pairs$x1 <- match(sig_pairs$group1, group_levels)
+  sig_pairs$x2 <- match(sig_pairs$group2, group_levels)
+
+  sig_pairs$signif <- ifelse(sig_pairs$p_adj < 0.001, "***",
+                             ifelse(sig_pairs$p_adj < 0.01, "**",
+                                    ifelse(sig_pairs$p_adj < 0.05, "*", "")))
+
+  y_max <- max(data_long$value, na.rm = TRUE)
+  y_range <- diff(range(data_long$value, na.rm = TRUE))
+
+  step <- 0.08 * y_range
+
+  sig_pairs$y <- y_max + seq_len(nrow(sig_pairs)) * step
+
+  # --------------------------
+  # Subtitle
+  # --------------------------
+  subtitle_text <- .make_subtitle_anova(
+    omega_sq = omega_sq,
+    p_value = p_anova
+  )
+
+  # --------------------------
+  # Colors
+  # --------------------------
+  # Vivid colors
+  vivid_colors <- scales::hue_pal()(length(unique(data_long$group)))
+
+  # mono
+  n <- length(groups)
+
+  mono_colors <- gray.colors(
+    n,
+    start = 0.9,
+    end = 0.1
+  )
+
+  # --------------------------
+  # Boxplot
+  # --------------------------
+  if (style == "boxplot") {
+    g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA, width = 0.7, linewidth = 0.7) +
+      ggplot2::geom_jitter(width = 0.1, alpha = 0.2, color = "grey25") +
+      ggplot2::labs(title = title, subtitle = subtitle_text, x = "", y = ylab) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::theme(legend.position = "none",
+                     axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
+
+}
+
+  # --------------------------
+  # Violin plot
+  # --------------------------
+  if (style == "violin") {
+    g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggplot2::geom_violin(trim = FALSE, alpha = 0.6, color = NA, adjust = 0.6) +
+      ggplot2::geom_boxplot(width = 0.18, outlier.shape = NA,
+                            color = "gray20", linewidth = 0.4) +
+      ggplot2::geom_point(position = ggplot2::position_jitter(width = 0.1),
+                          alpha = 0.2, size = 1.8, color = "gray25") +
+      ggplot2::labs(title = title, subtitle = subtitle_text, x = "", y = ylab) +
+      ggplot2::scale_fill_manual(values = vivid_colors) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::theme(legend.position = "none",
+                     axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
+}
+
+  # --------------------------
+  # monochrome premium
+  # --------------------------
+  if (style == "mono") {
+    g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA, width = 0.7, linewidth = 0.7, color = "black") +
+      ggplot2::geom_jitter(width = 0.1, alpha = 0.2, color = "grey25") +
+      ggplot2::labs(title = title, subtitle = subtitle_text, x = "", y = ylab) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::scale_fill_manual(values = mono_colors) +
+      ggplot2::theme(legend.position = "none",
+                     axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
+}
+
+  # --------------------------
+  # Half eye
+  # --------------------------
+  if (style == "halfeye") {
+    if (!requireNamespace("ggdist", quietly = TRUE)) {
+      stop("For 'halfeye' style, please install the 'ggdist' package")
+    }
+    g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
+      ggdist::stat_halfeye(alpha = .6, trim = FALSE, adjust = 0.6, width = 0.6,
+                           .width = c(0.5, 0.8, 0.95),
+                           justification = -0.2,
+                           slab_color = "gray20",
+                           interval_color = "gray20") +
+      ggplot2::geom_point(position = ggplot2::position_nudge(x = 0.15),
+                          size = 1.1, alpha = 0.2, color = "grey25") +
+      ggdist::stat_pointinterval(position = ggplot2::position_nudge(x = 0.2),
+                                 point_color = "black",
+                                 interval_color = "black",
+                                 .width = 0.95) +
+      ggplot2::labs(title = title, subtitle = subtitle_text, x = "", y = ylab) +
+      ggplot2::theme_minimal(base_size = 12) +
+      ggplot2::theme(legend.position = "none",
+                     axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
+}
+
+  # --------------------------
+  # Annotation and print
+  # --------------------------
+  g <- g + .add_significance(sig_pairs, y_range)
+
+  print(g)
+
+  # --------------------------
+  # Output
+  # --------------------------
+  obj <- (list(
+    type = "ANOVA",
+    p_anova = p_anova,
+    omega_sq = omega_sq,
+    omega_ci = c(omega_ci_low, omega_ci_high),
+    normal = normal,
+    p_normal = p_normal,
+    homogeneous = homogeneous,
+    p_levene = p_levene,
+    means_sd = means_sd,
+    tukey = tukey_df,
+    significant_pairs = significant_pairs,
+    model = model
+    )
+  )
+
+  # --------------------------
+  # Return
+  # --------------------------
   if (verbose) {
     .print_header("One-way ANOVA")
 
@@ -247,144 +403,6 @@ test.anova(df)
     })
   }
 
-  # --------------------------
-  # Labels position
-  # --------------------------
-  sig_pairs <- significant_pairs
-
-  if (nrow(sig_pairs) > 0) {
-
-    comps <- strsplit(sig_pairs$Comparison, "-")
-
-    sig_pairs$group1 <- sapply(comps, function(x) trimws(x[1]))
-    sig_pairs$group2 <- sapply(comps, function(x) trimws(x[2]))
-  }
-
-  group_levels <- levels(data_long$group)
-
-  sig_pairs$x1 <- match(sig_pairs$group1, group_levels)
-  sig_pairs$x2 <- match(sig_pairs$group2, group_levels)
-
-  sig_pairs$signif <- ifelse(sig_pairs$p_adj < 0.001, "***",
-                             ifelse(sig_pairs$p_adj < 0.01, "**",
-                                    ifelse(sig_pairs$p_adj < 0.05, "*", "")))
-
-  y_max <- max(data_long$value, na.rm = TRUE)
-  y_range <- diff(range(data_long$value, na.rm = TRUE))
-
-  step <- 0.08 * y_range
-
-  sig_pairs$y <- y_max + seq_len(nrow(sig_pairs)) * step
-
-
-  # --------------------------
-  # Colors
-  # --------------------------
-  # Vivid colors
-  vivid_colors <- scales::hue_pal()(length(unique(data_long$group)))
-
-  # mono
-  n <- length(groups)
-
-  mono_colors <- gray.colors(
-    n,
-    start = 0.9,
-    end = 0.1
-  )
-
-  # --------------------------
-  # Boxplot
-  # --------------------------
-  if (style == "boxplot") {
-    g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA, width = 0.7, linewidth = 0.7) +
-      ggplot2::geom_jitter(width = 0.1, alpha = 0.2, color = "grey25") +
-      ggplot2::labs(title = title, x = "", y = ylab) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
-      ggplot2::theme(legend.position = "none",
-                     axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
-
+  return(invisible(list(result = obj)))
 }
 
-  # --------------------------
-  # Violin plot
-  # --------------------------
-  if (style == "violin") {
-    g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggplot2::geom_violin(trim = FALSE, alpha = 0.6, color = NA, adjust = 0.6) +
-      ggplot2::geom_boxplot(width = 0.18, outlier.shape = NA,
-                            color = "gray20", linewidth = 0.4) +
-      ggplot2::geom_point(position = ggplot2::position_jitter(width = 0.1),
-                          alpha = 0.2, size = 1.8, color = "gray25") +
-      ggplot2::labs(title = title, x = "", y = ylab) +
-      ggplot2::scale_fill_manual(values = vivid_colors) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::theme(legend.position = "none",
-                     axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
-}
-
-  # --------------------------
-  # monochrome premium
-  # --------------------------
-  if (style == "mono") {
-    g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggplot2::geom_boxplot(alpha = 0.7, outlier.shape = NA, width = 0.7, linewidth = 0.7, color = "black") +
-      ggplot2::geom_jitter(width = 0.1, alpha = 0.2, color = "grey25") +
-      ggplot2::labs(title = title, x = "", y = ylab) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::scale_fill_manual(values = mono_colors) +
-      ggplot2::theme(legend.position = "none",
-                     axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
-}
-
-  # --------------------------
-  # Half eye
-  # --------------------------
-  if (style == "halfeye") {
-    if (!requireNamespace("ggdist", quietly = TRUE)) {
-      stop("For 'halfeye' style, please install the 'ggdist' package")
-    }
-    g <- ggplot2::ggplot(data_long, ggplot2::aes(x = group, y = value, fill = group)) +
-      ggdist::stat_halfeye(alpha = .6, trim = FALSE, adjust = 0.6, width = 0.6,
-                           .width = c(0.5, 0.8, 0.95),
-                           justification = -0.2,
-                           slab_color = "gray20",
-                           interval_color = "gray20") +
-      ggplot2::geom_point(position = ggplot2::position_nudge(x = 0.15),
-                          size = 1.1, alpha = 0.2, color = "grey25") +
-      ggdist::stat_pointinterval(position = ggplot2::position_nudge(x = 0.2),
-                                 point_color = "black",
-                                 interval_color = "black",
-                                 .width = 0.95) +
-      ggplot2::labs(title = title, x = "", y = ylab) +
-      ggplot2::theme_minimal(base_size = 12) +
-      ggplot2::theme(legend.position = "none",
-                     axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 12))
-}
-
-  # --------------------------
-  # Annotation and print
-  # --------------------------
-  g <- g + .add_significance(sig_pairs, y_range)
-
-  print(g)
-
-  # --------------------------
-  # Return
-  # --------------------------
-  return(invisible(list(
-    type = "ANOVA",
-    p_anova = p_anova,
-    omega_sq = omega_sq,
-    omega_ci = c(omega_ci_low, omega_ci_high),
-    normal = normal,
-    p_normal = p_normal,
-    homogeneous = homogeneous,
-    p_levene = p_levene,
-    means_sd = means_sd,
-    tukey = tukey_df,
-    significant_pairs = significant_pairs,
-    model = model
-  )))
-}

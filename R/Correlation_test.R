@@ -34,11 +34,11 @@
 #'   from the input. If \code{FALSE}, no label is shown.
 #' @param style Plot style: \code{"simple"} (default), \code{"inference"},
 #'   \code{"structure"}, \code{"density"}, or \code{"distribution"}.
+#' @param plot_normality Logical. If \code{TRUE}, displays QQ-plots for
+#'   normality assessment.
 #' @param help Logical. If \code{TRUE}, displays a detailed usage guide.
 #' @param verbose Logical. If \code{TRUE}, prints information about method
 #'   selection and diagnostics.
-#' @param plot_normality Logical. If \code{TRUE}, displays QQ-plots for
-#'   normality assessment.
 #'
 #' @return
 #' An object of class \code{"test.correlation"} containing:
@@ -89,23 +89,16 @@
 #'
 #' @export
 
-
-test.correlation <- function(
-    x, y = NULL,
-    method = "auto",
-    main = NULL,
-    xlab = NULL,
-    ylab = NULL,
-    style = c(
-      "simple",
-      "inference",
-      "structure",
-      "density",
-      "distribution"
-    ),
-    help = FALSE,
-    verbose = TRUE,
-    plot_normality = FALSE
+test.correlation <- function(x,
+                             y = NULL,
+                             method = "auto",
+                             main = NULL,
+                             xlab = NULL,
+                             ylab = NULL,
+                             style = c("simple", "inference", "structure", "density", "distribution"),
+                             plot_normality = FALSE,
+                             help = FALSE,
+                             verbose = TRUE
 ) {
 
   style <- match.arg(style)
@@ -294,7 +287,7 @@ Examples:
   # Choose smoothing method for trend line
   smooth_method <- if (tolower(method_used) == "pearson") "lm" else "loess"
 
-  auto_title <- paste("Correlation:", tools::toTitleCase(method_used))
+  auto_title <- paste(tools::toTitleCase(method_used), "Correlation")
 
   # Naming title and axis
   plot_title <- if (is.null(main)) {
@@ -321,6 +314,14 @@ Examples:
     ylab
   }
 
+  # --- Subtitle text ---
+  subtitle_text <- .make_subtitle_correlation(
+    method_used,
+    coef_value,
+    nrow(data_df),
+    p_val
+  )
+
   # ---------------------------
   # Plot styles
   # ---------------------------
@@ -331,6 +332,7 @@ Examples:
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
         title = plot_title,
+        subtitle = subtitle_text,
         x = plot_xlab,
         y = plot_ylab
       )
@@ -354,18 +356,20 @@ Examples:
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
         title = plot_title,
+        subtitle = subtitle_text,
         x = plot_xlab,
         y = plot_ylab
       )
 
   } else if (style == "structure") {
     g <- ggplot2::ggplot(data_df, ggplot2::aes(x = x, y = y)) +
-      ggplot2::geom_point(alpha = 0.40, size = 2) +
+      ggplot2::geom_point(alpha = 0.25, size = 2) +
       ggplot2::geom_density_2d(color = "grey40", alpha = 0.7) +
       ggplot2::geom_smooth(method = smooth_method, se = FALSE) +
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
         title = plot_title,
+        subtitle = subtitle_text,
         x = plot_xlab,
         y = plot_ylab
       )
@@ -382,6 +386,7 @@ Examples:
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
         title = plot_title,
+        subtitle = subtitle_text,
         x = plot_xlab,
         y = plot_ylab
       )
@@ -391,11 +396,12 @@ Examples:
     if (!requireNamespace("ggExtra", quietly = TRUE)) {
       warning("For style = 'distribution' install the 'ggExtra' package. Falling back to style 'simple'.")
       g <- ggplot2::ggplot(data_df, ggplot2::aes(x = x, y = y)) +
-        ggplot2::geom_point(alpha = 0.40, size = 2.5) +
+        ggplot2::geom_point(alpha = 0.25, size = 2.5) +
         ggplot2::geom_smooth(method = smooth_method, se = FALSE, linetype = "dashed") +
         ggplot2::theme_minimal(base_size = 12) +
         ggplot2::labs(
           title = plot_title,
+          subtitle = subtitle_text,
           x = plot_xlab,
           y = plot_ylab
         )
@@ -407,6 +413,7 @@ Examples:
         ggplot2::theme_minimal(base_size = 12) +
         ggplot2::labs(
           title = plot_title,
+          subtitle = subtitle_text,
           x = plot_xlab,
           y = plot_ylab
         )

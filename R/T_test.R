@@ -212,6 +212,8 @@ Example:
   # ============================
     p_label <- signif(p_value, 3)
 
+    p_label_sub <- .format_p(p_value)
+
     signif_label <- if (p_value < 0.001) {
       "***"
     } else if (p_value < 0.01) {
@@ -222,6 +224,13 @@ Example:
       ""
     }
 
+    # --- Subtitle ---
+    subtitle_text <- paste0(
+      "diff = ", round(mean_diff, 2),
+      " | p ", ifelse(p_value < 0.001, "", "= "), p_label_sub
+    )
+
+    # --- Colors ---
     y_pos <- max(values, na.rm = TRUE) +
       0.1 * diff(range(values, na.rm = TRUE))
 
@@ -244,6 +253,7 @@ Example:
         ggplot2::scale_fill_manual(values = vivid_colors) +
         ggplot2::labs(
           title = if (title) title_text else NULL,
+          subtitle = subtitle_text,
           x = "",
           y = ylab
         ) +
@@ -282,6 +292,7 @@ Example:
         ggplot2::theme_minimal(base_size = 12) +
         ggplot2::labs(
           title = if (title) title_text else NULL,
+          subtitle = subtitle_text,
           x = "",
           y = ylab
         ) +
@@ -309,6 +320,7 @@ Example:
       ggplot2::scale_fill_manual(values = mono_colors) +
       ggplot2::labs(
         title = if (title) title_text else NULL,
+        subtitle = subtitle_text,
         x = "",
         y = ylab
       ) +
@@ -362,6 +374,7 @@ Example:
         ggplot2::scale_fill_manual(values = vivid_colors) +
         ggplot2::labs(
           title = if (title) title_text else NULL,
+          subtitle = subtitle_text,
           x = "",
           y = ylab
         ) +

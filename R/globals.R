@@ -3,8 +3,8 @@
 if (getRversion() >= "2.15.1") {
   utils::globalVariables(c(
     # Internal variables
-    "grupo", "id", "ind", "letra", "n", "p adj", "p.adj", "P.adj", "p_adj",
-    "prop", "valor", "values",
+    "group", "id", "ind", "n", "p adj", "p.adj", "P.adj", "p_adj",
+    "prop", "value", "values", "x1", "x2", "y", "signif",
 
     # Standard variables
     "group", "value"

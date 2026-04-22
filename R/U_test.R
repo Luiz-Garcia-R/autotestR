@@ -206,6 +206,7 @@ Examples:
       ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::labs(
         title = title,
+        subtitle = .build_subtitle_u(median_diff, p_value),
         x = "",
         y = ylab
       ) +
@@ -244,6 +245,7 @@ Examples:
       ggplot2::theme_minimal(base_size = 12) +
       ggplot2::labs(
         title = title,
+        subtitle = .build_subtitle_u(median_diff, p_value),
         x = "",
         y = ylab
       ) +
@@ -271,6 +273,7 @@ Examples:
       ggplot2::scale_fill_manual(values = mono_colors) +
       ggplot2::labs(
         title = title,
+        subtitle = .build_subtitle_u(median_diff, p_value),
         x = "",
         y = ylab
       ) +
@@ -324,6 +327,7 @@ Examples:
       ggplot2::scale_fill_manual(values = vivid_colors) +
       ggplot2::labs(
         title = title,
+        subtitle = .build_subtitle_u(median_diff, p_value),
         x = "",
         y = ylab
       ) +

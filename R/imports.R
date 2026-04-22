@@ -26,9 +26,7 @@
 
 # Specific packages for analysis and visualization
 # ---------------------------------------------------------------------------------
-# Levene Test
 #' @importFrom car leveneTest
-# Gráficos
 #' @importFrom ggplot2 ggplot aes geom_boxplot geom_jitter geom_violin geom_point geom_segment annotate labs theme_minimal scale_fill_manual element_text
 #' @importFrom RColorBrewer brewer.pal
 #' @importFrom ggExtra ggMarginal
