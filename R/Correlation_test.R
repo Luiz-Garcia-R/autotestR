@@ -19,8 +19,8 @@
 #'   \item Otherwise, Spearman's rank correlation is applied.
 #' }
 #'
-#' Normality is assessed using Shapiro-Wilk (n ≤ 50), Anderson-Darling
-#' (50 < n ≤ 300), or Kolmogorov-Smirnov (n > 300) tests.
+#' Normality is assessed using Shapiro-Wilk (n <= 50), Anderson-Darling
+#' (50 < n <= 300), or Kolmogorov-Smirnov (n > 300) tests.
 #'
 #' @param x Numeric vector or data frame with exactly two numeric columns.
 #' @param y Numeric vector (optional if \code{x} is a data frame).
@@ -44,7 +44,7 @@
 #' An object of class \code{"test.correlation"} containing:
 #' \itemize{
 #'   \item \code{call}: Matched function call.
-#'   \item \code{data}: Input data (if \code{n ≤ 5000}).
+#'   \item \code{data}: Input data (if \code{n <= 5000}).
 #'   \item \code{n}: Sample size.
 #'   \item \code{method}: Selected correlation method.
 #'   \item \code{estimate}: Correlation coefficient.
