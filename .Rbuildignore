@@ -2,34 +2,26 @@
 # R Package Build Ignore Template
 # -------------------------------
 
-# RStudio project files
-^.*\\.Rproj$
-^\\.Rproj\\.user$
-
-# Version control / Git
-^\\.git$
-^\\.gitignore$
-
-# Documentation / Markdown / Notes
-^README\\.md$
-^LICENSE\\.md$
-^NEWS\\.md$
-^docs/
-^vignettes/
-
-# Cache / temporary / output
-^\\.Rhistory$
-^\\.RData$
-^\\.Ruserdata$
-^\\.Rplots\\.pdf$
-^\\.Rproj\\.user/
-^__pycache__/
-^.*\\.tmp$
-^.*\\.log$
-
-# OS-specific
-^\\.DS_Store$
-^Thumbs\\.db$
+# RStudio
+\.Rproj$
 ^\.Rproj\.user$
+
+# Git
+^\.git$
+^\.gitignore$
+
+# License
 ^LICENSE\.md$
-\\.Rproj$
+
+# OS
+^\.DS_Store$
+^Thumbs\.db$
+
+# R session
+^\.Rhistory$
+^\.RData$
+^\.Ruserdata$
+
+# Misc
+\.log$
+\.tmp$
