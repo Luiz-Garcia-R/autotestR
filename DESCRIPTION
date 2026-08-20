@@ -1,6 +1,6 @@
 Package: autotestR
 Title: Automated Functions for Basic Statistical Tests
-Version: 1.2.15
+Version: 1.2.16
 Authors@R: 
     person("Luiz", "Garcia", 
            email = "luiz.cardoso@ufpr.br", 
@@ -17,8 +17,22 @@ Depends: R (>= 4.1.0)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-Imports: car, crayon, dplyr, FSA, ggplot2, ggdist, ggExtra, nortest,
-        purrr, RColorBrewer, scales, stats, tibble, tidyr, tidyselect,
-        utils, vcd
+Imports: car,
+         crayon,
+         dplyr,
+         FSA,
+         ggplot2,
+         ggdist,
+         ggExtra,
+         nortest,
+         purrr,
+         RColorBrewer,
+         scales,
+         stats,
+         tibble,
+         tidyr,
+         tidyselect,
+         utils,
+         vcd
 NeedsCompilation: no
 Maintainer: Luiz Garcia <luiz.cardoso@ufpr.br>
